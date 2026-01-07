@@ -7,9 +7,11 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
-      <AppSidebar />
+    <div className="flex">
+      <div>
+        <AppSidebar />
+      </div>
       <main>{children}</main>
-    </>
+    </div>
   );
 }
