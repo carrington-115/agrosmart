@@ -13,7 +13,6 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { zodLoginSchema } from "@/lib/types";
 import { LoginSchema, signupSchema } from "@/lib/schema";
 import { z } from "zod";
 import {
@@ -30,35 +29,12 @@ import Image from "next/image";
 import logoLight from "@/assets/images/logo-light.svg";
 import logoDark from "@/assets/images/logo-dark.svg";
 import { Header } from "@/components/web";
-
-// card title
-function LogoTitle() {
-  return (
-    <div className="flex items-center gap-2">
-      <Link href="/" className="flex items-center gap-2">
-        <Image
-          src={logoLight}
-          alt="Logo"
-          width={24}
-          height={24}
-          className="dark:hidden"
-        />
-        <Image
-          src={logoDark}
-          alt="Logo"
-          width={100}
-          height={100}
-          className="hidden dark:block"
-        />
-        <span>
-          <h1>AgroSmart</h1>
-        </span>
-      </Link>
-    </div>
-  );
-}
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export default function Login() {
+  const router = useRouter();
   type loginFormValues = z.infer<typeof LoginSchema>;
   const loginForm = useForm<loginFormValues>({
     resolver: zodResolver(LoginSchema),
@@ -78,13 +54,40 @@ export default function Login() {
     },
   });
 
-  const onLoginSubmit = (data: zodLoginSchema) => {
-    console.log(data);
-  };
+  const supabase = createClient();
 
-  const onSignupSubmit = (data: zodLoginSchema) => {
-    console.log(data);
-  };
+  async function onSignupSubmit({ name, email, password }: signupFormValues) {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          display_name: name,
+        },
+      },
+    });
+
+    if (error) {
+      console.error(error);
+      toast.error(error.message);
+    }
+    toast.success("Signup successful");
+    router.push("/dashboard");
+  }
+
+  async function onLoginSubmit({ email, password }: loginFormValues) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      console.error(error);
+      toast.error(error.message);
+    }
+    toast.success("Login successful");
+    router.push("/dashboard");
+  }
 
   return (
     <div className="flex w-full max-w-sm max-h-auto flex-col gap-6">
@@ -166,6 +169,7 @@ export default function Login() {
               <div className="flex gap-2">
                 <Button
                   type="submit"
+                  onClick={loginForm.handleSubmit(onLoginSubmit)}
                   className="hover:bg-on-primary-container cursor-pointer"
                 >
                   Login
@@ -338,6 +342,7 @@ export default function Login() {
                 <Button
                   type="submit"
                   className="hover:bg-on-primary-container cursor-pointer"
+                  onClick={signupForm.handleSubmit(onSignupSubmit)}
                 >
                   Sign up
                 </Button>
@@ -390,6 +395,33 @@ export default function Login() {
           </Card>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// card title
+function LogoTitle() {
+  return (
+    <div className="flex items-center gap-2">
+      <Link href="/" className="flex items-center gap-2">
+        <Image
+          src={logoLight}
+          alt="Logo"
+          width={24}
+          height={24}
+          className="dark:hidden"
+        />
+        <Image
+          src={logoDark}
+          alt="Logo"
+          width={100}
+          height={100}
+          className="hidden dark:block"
+        />
+        <span>
+          <h1>AgroSmart</h1>
+        </span>
+      </Link>
     </div>
   );
 }
