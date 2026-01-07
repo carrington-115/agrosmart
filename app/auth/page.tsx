@@ -29,6 +29,7 @@ import { FieldError } from "@/components/ui/field";
 import Image from "next/image";
 import logoLight from "@/assets/images/logo-light.svg";
 import logoDark from "@/assets/images/logo-dark.svg";
+import { Header } from "@/components/web";
 
 // card title
 function LogoTitle() {
@@ -87,6 +88,7 @@ export default function Login() {
 
   return (
     <div className="flex w-full max-w-sm max-h-auto flex-col gap-6">
+      <Header />
       <Tabs defaultValue="login">
         <TabsList>
           <TabsTrigger value="login">Login</TabsTrigger>
