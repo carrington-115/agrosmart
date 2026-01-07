@@ -70,6 +70,7 @@ export default function Login() {
     if (error) {
       console.error(error);
       toast.error(error.message);
+      return;
     }
     toast.success("Signup successful");
     router.push("/dashboard");
@@ -84,6 +85,7 @@ export default function Login() {
     if (error) {
       console.error(error);
       toast.error(error.message);
+      return;
     }
     toast.success("Login successful");
     router.push("/dashboard");
