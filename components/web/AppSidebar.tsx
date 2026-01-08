@@ -72,18 +72,13 @@ const items = {
 };
 
 export function AppSidebar() {
-  const [sidebarOpen, setSidebarOpen] = useState<boolean | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center gap-2">
-          <Image
-            src={Logo}
-            alt="logo"
-            width={sidebarOpen ? 24 : 48}
-            height={sidebarOpen ? 24 : 48}
-          />
-          {sidebarOpen && <h2 className="font-bold">AgroSmart</h2>}
+          <Image src={Logo} alt="logo" width={36} height={36} />
+          {sidebarOpen && <h2 className="font-bold text-2xl">AgroSmart</h2>}
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -122,7 +117,10 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
           <div className={twMerge(sidebarOpen && "w-full flex justify-end")}>
-            <SidebarTrigger onClick={() => setSidebarOpen(!sidebarOpen)} />
+            <SidebarTrigger
+              onBeforeToggle={() => setSidebarOpen(!sidebarOpen)}
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+            />
           </div>
         </SidebarGroup>
       </SidebarFooter>

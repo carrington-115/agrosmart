@@ -32,9 +32,12 @@ import { Header } from "@/components/web";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useTransition } from "react";
+import { Loader2 } from "lucide-react";
 
 export default function Login() {
   const router = useRouter();
+  const [pending, startTransition] = useTransition();
   type loginFormValues = z.infer<typeof LoginSchema>;
   const loginForm = useForm<loginFormValues>({
     resolver: zodResolver(LoginSchema),
@@ -57,38 +60,42 @@ export default function Login() {
   const supabase = createClient();
 
   async function onSignupSubmit({ name, email, password }: signupFormValues) {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          display_name: name,
+    startTransition(async () => {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            display_name: name,
+          },
         },
-      },
-    });
+      });
 
-    if (error) {
-      console.error(error);
-      toast.error(error.message);
-      return;
-    }
-    toast.success("Signup successful");
-    router.push("/dashboard");
+      if (error) {
+        console.error(error);
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Signup successful");
+      router.push("/dashboard");
+    });
   }
 
   async function onLoginSubmit({ email, password }: loginFormValues) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    startTransition(async () => {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      console.error(error);
-      toast.error(error.message);
-      return;
-    }
-    toast.success("Login successful");
-    router.push("/dashboard");
+      if (error) {
+        console.error(error);
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Login successful");
+      router.push("/dashboard");
+    });
   }
 
   return (
@@ -174,7 +181,13 @@ export default function Login() {
                   onClick={loginForm.handleSubmit(onLoginSubmit)}
                   className="hover:bg-on-primary-container cursor-pointer"
                 >
-                  Login
+                  {pending ? (
+                    <>
+                      <Loader2 className="animate-spin" /> Logging in...
+                    </>
+                  ) : (
+                    "Login"
+                  )}
                 </Button>
                 <Button variant="outline" className="cursor-pointer">
                   Login with Google
@@ -346,7 +359,13 @@ export default function Login() {
                   className="hover:bg-on-primary-container cursor-pointer"
                   onClick={signupForm.handleSubmit(onSignupSubmit)}
                 >
-                  Sign up
+                  {pending ? (
+                    <>
+                      <Loader2 className="animate-spin" /> Signing up...
+                    </>
+                  ) : (
+                    "Sign up"
+                  )}
                 </Button>
                 <Button variant="outline" className="cursor-pointer">
                   Sign up with Google
