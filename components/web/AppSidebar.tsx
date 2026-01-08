@@ -27,45 +27,47 @@ import Image from "next/image";
 import Logo from "@/assets/images/logo-light.svg";
 import { useState } from "react";
 import { twMerge } from "tailwind-merge";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 // Menu items.
 const items = {
   header: [
     {
       title: "Dashboard",
-      url: "#",
+      url: "/dashboard",
       icon: LayoutDashboard,
     },
     {
       title: "Sensors",
-      url: "#",
+      url: "/dashboard/sensors",
       icon: SatelliteDish,
     },
     {
       title: "Alerts",
-      url: "#",
+      url: "/dashboard/alerts",
       icon: BellElectric,
     },
     {
       title: "Chatbot",
-      url: "#",
+      url: "/dashboard/chatbot",
       icon: BotMessageSquare,
     },
     {
       title: "Reports",
-      url: "#",
+      url: "/dashboard/reports",
       icon: ScrollText,
     },
   ],
   footer: [
     {
       title: "Profile",
-      url: "#",
+      url: "/dashboard/profile",
       icon: User2Icon,
     },
     {
       title: "Settings",
-      url: "#",
+      url: "/dashboard/settings",
       icon: Settings,
     },
   ],
@@ -73,6 +75,7 @@ const items = {
 
 export function AppSidebar() {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
+  const pathname = usePathname();
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -88,11 +91,18 @@ export function AppSidebar() {
             <SidebarMenu>
               {items.header.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <a href={item.url}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={item.url === pathname}
+                    className={twMerge(
+                      item.url === pathname &&
+                        "!bg-primary !text-primary-foreground"
+                    )}
+                  >
+                    <Link href={item.url}>
                       <item.icon />
                       <span>{item.title}</span>
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
