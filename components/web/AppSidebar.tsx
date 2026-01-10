@@ -73,12 +73,14 @@ const items = {
   ],
 };
 
-export function AppSidebar() {
+export default function AppSidebar() {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const pathname = usePathname();
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
+      <SidebarHeader
+        className={twMerge("mt-4", !sidebarOpen && "items-center")}
+      >
         <div className="flex items-center gap-2">
           <Image src={Logo} alt="logo" width={36} height={36} />
           {sidebarOpen && <h2 className="font-bold text-2xl">AgroSmart</h2>}
@@ -88,7 +90,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className={twMerge(!sidebarOpen && "items-center")}>
               {items.header.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
@@ -100,7 +102,14 @@ export function AppSidebar() {
                     )}
                   >
                     <Link href={item.url}>
-                      <item.icon />
+                      <item.icon
+                        fill={
+                          pathname === item.url
+                            ? "var(--primary-foreground"
+                            : "none"
+                        }
+                        className={twMerge(!sidebarOpen && "!size-5")}
+                      />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -113,14 +122,25 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className={twMerge(!sidebarOpen && "items-center")}>
               {items.footer.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <a href={item.url}>
-                      <item.icon />
+                    <Link href={item.url}>
+                      <item.icon
+                        fill={
+                          pathname === item.url
+                            ? "var(--primary-foreground"
+                            : "none"
+                        }
+                        className={twMerge(
+                          !sidebarOpen && "!size-5",
+                          pathname === item.url &&
+                            "!fill-[var(--primary-foreground)]"
+                        )}
+                      />
                       <span>{item.title}</span>
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

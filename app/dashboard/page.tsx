@@ -1,7 +1,12 @@
+import { DashboardHeader } from "@/components/web";
+
 export default function Dashboard() {
   return (
     <div>
-      <h1>Dashboard</h1>
+      <DashboardHeader
+        leftContent={<h1>leftContent</h1>}
+        rightContent={<h1>Right content</h1>}
+      />
     </div>
   );
 }

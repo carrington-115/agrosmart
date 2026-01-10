@@ -1,4 +1,3 @@
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/web";
 
 export default function DashboardLayout({
@@ -7,11 +6,11 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex">
+    <div className="flex min-w-[100vw] overflow-x-hidden mx-auto">
       <div>
         <AppSidebar />
       </div>
-      <main>{children}</main>
+      <main className="w-[100%] flex-1 mx-auto">{children}</main>
     </div>
   );
 }
