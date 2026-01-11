@@ -3,6 +3,7 @@ import AppSidebar from "./AppSidebar";
 import DashboardHeader from "./page-headers/DashboardHeader";
 import AnalyticsCard from "./AnalyticsCard";
 import MonitoringLineChart from "./LineChart";
+import Recommendations from "./Recommendations";
 
 export {
   Header,
@@ -10,4 +11,5 @@ export {
   DashboardHeader,
   AnalyticsCard,
   MonitoringLineChart,
+  Recommendations,
 };

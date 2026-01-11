@@ -32,3 +32,9 @@ export interface MonitoringChartProps {
   data?: typeof chartData;
   className?: string;
 }
+
+export interface recommendationsCardProps {
+  title: string;
+  content: string;
+  color: string;
+}

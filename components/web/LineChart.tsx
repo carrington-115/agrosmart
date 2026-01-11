@@ -1,6 +1,13 @@
 "use client";
 
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { Button } from "@/components/ui/button";
 
 import {
@@ -51,13 +58,14 @@ const chartConfig = {
 
 export default function MonitoringLineChart({
   data = chartData,
-  className,
 }: MonitoringChartProps) {
   return (
-    <Card className="w-[95%] shadow-none bg-primary-container/20 border border-primary">
+    <Card className="w-[100%] overflow-x-hidden shadow-none bg-primary-container/20 border border-primary">
       <CardHeader>
-        <CardTitle className="text-3xl">NPK Realtime Stream</CardTitle>
-        <CardDescription className="text-base">
+        <CardTitle className="text-3xl text-on-primary-container">
+          NPK Realtime Stream
+        </CardTitle>
+        <CardDescription className="text-sm text-on-primary-container/70">
           This chart style provides excellent at-a-glance insight for farmers,
           agronomists, or automated fertigation systems — helping detect
           deficiencies, over-fertilization, or sudden changes due to
@@ -65,82 +73,86 @@ export default function MonitoringLineChart({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer
-          config={chartConfig}
-          className={`h-[320px] w-full ${className}`}
-        >
-          <LineChart
-            accessibilityLayer
-            data={data}
-            margin={{
-              left: 12,
-              right: 12,
-              top: 20,
-              bottom: 20,
-            }}
+        <div className="overflow-x-auto">
+          <ChartContainer
+            config={chartConfig}
+            className={`h-[250px] w-full min-w-0 relative overflow-x-hidden`}
           >
-            <CartesianGrid
-              vertical={false}
-              strokeDasharray="3 3"
-              opacity={0.4}
-            />
-
-            <XAxis
-              dataKey="time"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              visibility="hidden"
-              tickFormatter={(value) => value}
-            />
-
-            <YAxis
-              tickLine={false}
-              visibility="hidden"
-              axisLine={false}
-              tickMargin={8}
-              tickCount={5}
-            />
-
-            <ChartTooltip
-              cursor={false}
-              content={
-                <ChartTooltipContent
-                  indicator="dot"
-                  labelFormatter={(value) => `Time: ${value}`}
+            <ResponsiveContainer width={"99%"} height={"100%"}>
+              <LineChart
+                accessibilityLayer
+                data={data}
+                margin={{
+                  left: 12,
+                  right: 12,
+                  top: 20,
+                  bottom: 20,
+                }}
+              >
+                <CartesianGrid
+                  vertical={false}
+                  strokeDasharray="3 3"
+                  opacity={0.4}
                 />
-              }
-            />
 
-            <ChartLegend content={<ChartLegendContent />} />
-            <Line
-              dataKey="cpu"
-              type="monotone"
-              stroke="var(--color-cpu)"
-              strokeWidth={2.5}
-              dot={{ r: 4, strokeWidth: 2 }}
-              activeDot={{ r: 7 }}
-            />
+                <XAxis
+                  dataKey="time"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  visibility="hidden"
+                  tickFormatter={(value) => value}
+                />
 
-            <Line
-              dataKey="memory"
-              type="monotone"
-              stroke="var(--color-memory)"
-              strokeWidth={2.5}
-              dot={{ r: 4, strokeWidth: 2 }}
-              activeDot={{ r: 7 }}
-            />
+                <YAxis
+                  tickLine={false}
+                  visibility="hidden"
+                  axisLine={false}
+                  tickMargin={8}
+                  tickCount={5}
+                />
 
-            <Line
-              dataKey="network"
-              type="monotone"
-              stroke="var(--color-network)"
-              strokeWidth={2.5}
-              dot={{ r: 4, strokeWidth: 2 }}
-              activeDot={{ r: 7 }}
-            />
-          </LineChart>
-        </ChartContainer>
+                <ChartTooltip
+                  cursor={false}
+                  content={
+                    <ChartTooltipContent
+                      indicator="dot"
+                      labelFormatter={(value) => `Time: ${value}`}
+                    />
+                  }
+                />
+
+                <ChartLegend content={<ChartLegendContent />} />
+                <Line
+                  dataKey="cpu"
+                  type="monotone"
+                  stroke="var(--color-cpu)"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, strokeWidth: 2 }}
+                  activeDot={{ r: 7 }}
+                />
+
+                <Line
+                  dataKey="memory"
+                  type="monotone"
+                  stroke="var(--color-memory)"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, strokeWidth: 2 }}
+                  activeDot={{ r: 7 }}
+                />
+
+                <Line
+                  dataKey="network"
+                  type="monotone"
+                  stroke="var(--color-network)"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, strokeWidth: 2 }}
+                  activeDot={{ r: 7 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </ChartContainer>
+        </div>
       </CardContent>
       <CardFooter>
         <div className="w-full flex justify-end">

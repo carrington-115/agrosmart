@@ -97,8 +97,9 @@ export default function AppSidebar() {
                     asChild
                     isActive={item.url === pathname}
                     className={twMerge(
+                      "hover:!bg-on-primary-container/5 hover:!text-on-primary-container",
                       item.url === pathname &&
-                        "!bg-primary !text-primary-foreground"
+                        "!bg-primary !text-primary-foreground hover:!bg-primary hover:!text-white"
                     )}
                   >
                     <Link href={item.url}>
@@ -125,7 +126,14 @@ export default function AppSidebar() {
             <SidebarMenu className={twMerge(!sidebarOpen && "items-center")}>
               {items.footer.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton
+                    asChild
+                    className={twMerge(
+                      "hover:!bg-on-primary-container/5 hover:!text-on-primary-container",
+                      item.url === pathname &&
+                        "!bg-primary !text-primary-foreground hover:!bg-primary hover:!text-white"
+                    )}
+                  >
                     <Link href={item.url}>
                       <item.icon
                         fill={
@@ -150,6 +158,7 @@ export default function AppSidebar() {
             <SidebarTrigger
               onBeforeToggle={() => setSidebarOpen(!sidebarOpen)}
               onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="hover:!bg-on-primary-container/5 hover:!text-on-primary-container"
             />
           </div>
         </SidebarGroup>
