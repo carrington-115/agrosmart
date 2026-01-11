@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import {
   Analytics,
   DashboardEmptyTemplate,
@@ -9,7 +8,7 @@ import {
   Recommendations,
 } from "@/components/web";
 import { analyticsProps } from "@/lib/types";
-import { CloudSun, Droplet, TreeDeciduous } from "lucide-react";
+import { CloudSun, Droplet, File, TreeDeciduous } from "lucide-react";
 import { useState } from "react";
 
 export const dataAnalysisContent: analyticsProps[] = [
@@ -63,7 +62,13 @@ export default function Dashboard() {
           </>
         ) : (
           <div className="w-full h-[80vh] flex justify-center items-center">
-            <DashboardEmptyTemplate />
+            <DashboardEmptyTemplate
+              Icon={<File size={64} />}
+              title="Get Started"
+              description="It's a bit quiet in here. Let's get the ball rolling. Add sensors, get realtime visualization, and get AI powered features through chats, alerts, and recommendations."
+              actionText="Add sensors"
+              action={() => setSensors(1)}
+            />
           </div>
         )}
       </>

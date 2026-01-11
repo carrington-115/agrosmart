@@ -1,11 +1,15 @@
 "use client";
 
-import { Analytics, SensorsHeader } from "@/components/web";
+import {
+  Analytics,
+  DashboardEmptyTemplate,
+  SensorsHeader,
+} from "@/components/web";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { SatelliteDish } from "lucide-react";
 
 export default function Sensors() {
-  const [sensors, setSensors] = useState<number>(1);
+  const [sensors, setSensors] = useState<number>(0);
   return (
     <div className="max-w-[100%] mx-auto overflow-x-hidden">
       <SensorsHeader />
@@ -15,13 +19,15 @@ export default function Sensors() {
             <Analytics />
           </>
         ) : (
-          <div className="max-w-[100%] mx-auto h-screen flex justify-center items-center">
-            <div className="flex flex-col gap-3 items-center">
-              <h1 className="text-2xl font-bold">Get Started</h1>
-              <p>It's a bit quiet in here. Let's get the ball rolling.</p>
-              <Button>Get Started</Button>
-            </div>
-          </div>
+          <section className="max-w-[100%] mx-auto h-[80vh] flex justify-center items-center">
+            <DashboardEmptyTemplate
+              Icon={<SatelliteDish size={64} />}
+              title="Get Started"
+              description="It's a bit quiet in here. Let's get the ball rolling. Add sensors, get realtime visualization, and get AI powered features through chats, alerts, and recommendations."
+              actionText="Add sensors"
+              action={() => setSensors(1)}
+            />
+          </section>
         )}
       </>
     </div>

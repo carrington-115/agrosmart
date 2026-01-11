@@ -7,6 +7,7 @@ import MonitoringLineChart from "./LineChart";
 import Recommendations from "./Recommendations";
 import Analytics from "./AnalyticSection";
 import { DashboardEmptyTemplate } from "./DashboardEmpty";
+import AlertsHeader from "./page-headers/AlertsHeader";
 
 export {
   Header,
@@ -18,4 +19,5 @@ export {
   Recommendations,
   SensorsHeader,
   Analytics,
+  AlertsHeader,
 };

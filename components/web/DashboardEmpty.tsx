@@ -7,25 +7,32 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Button } from "@/components/ui/button";
-import { SatelliteDish } from "lucide-react";
 
-export function DashboardEmptyTemplate() {
+interface DashboardEmptyTemplateProps {
+  Icon: React.ReactNode;
+  title: string;
+  description: string;
+  actionText: string;
+  action: () => void;
+}
+
+export function DashboardEmptyTemplate({
+  Icon,
+  title,
+  description,
+  actionText,
+  action,
+}: DashboardEmptyTemplateProps) {
   return (
     <Empty>
       <EmptyHeader>
-        <EmptyMedia variant="default">
-          <SatelliteDish size={64} />
-        </EmptyMedia>
-        <EmptyTitle>Get Started</EmptyTitle>
-        <EmptyDescription>
-          It's a bit quiet in here. Let's get the ball rolling. Add sensors, get
-          realtime visualization, and get AI powered features through chats,
-          alerts, and recommendations.
-        </EmptyDescription>
+        <EmptyMedia variant="default">{Icon}</EmptyMedia>
+        <EmptyTitle>{title}</EmptyTitle>
+        <EmptyDescription>{description}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
         <div className="flex gap-2">
-          <Button>Add sensors</Button>
+          <Button onClick={action}>{actionText}</Button>
           <Button variant="outline">Go to Settings</Button>
         </div>
       </EmptyContent>
