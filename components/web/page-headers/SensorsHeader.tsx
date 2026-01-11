@@ -2,7 +2,14 @@
 
 import AppHeader from "../AppHeader";
 import { HeaderType } from "@/lib/types";
-import { Settings, BellElectric, Plus, SearchIcon } from "lucide-react";
+import {
+  Settings,
+  BellElectric,
+  Plus,
+  SearchIcon,
+  Table,
+  Grid,
+} from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Button } from "@/components/ui/button";
 
@@ -12,9 +19,8 @@ import {
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-  InputGroupText,
-  InputGroupTextarea,
 } from "@/components/ui/input-group";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const iconsButtons = [
   {
@@ -111,7 +117,24 @@ export default function SensorsHeader() {
             </InputGroupAddon>
           </InputGroup>
         </div>
-        <div className=""></div>
+        <div className="">
+          <Tabs defaultValue="table">
+            <TabsList className="!bg-primary-container !text-on-primary-container">
+              <TabsTrigger
+                value="table"
+                className="data-[state=active]:!bg-on-primary-container data-[state=active]:!text-primary-container"
+              >
+                <Table />
+              </TabsTrigger>
+              <TabsTrigger
+                value="grid"
+                className="data-[state=active]:!bg-on-primary-container data-[state=active]:!text-primary-container"
+              >
+                <Grid />
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
     </>
   );

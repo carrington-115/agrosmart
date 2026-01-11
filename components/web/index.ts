@@ -6,11 +6,13 @@ import AnalyticsCard from "./AnalyticsCard";
 import MonitoringLineChart from "./LineChart";
 import Recommendations from "./Recommendations";
 import Analytics from "./AnalyticSection";
+import { DashboardEmptyTemplate } from "./DashboardEmpty";
 
 export {
   Header,
   AppSidebar,
   DashboardHeader,
+  DashboardEmptyTemplate,
   AnalyticsCard,
   MonitoringLineChart,
   Recommendations,

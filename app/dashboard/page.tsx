@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import {
   Analytics,
+  DashboardEmptyTemplate,
   DashboardHeader,
   MonitoringLineChart,
   Recommendations,
@@ -47,7 +48,7 @@ export const dataAnalysisContent: analyticsProps[] = [
 ];
 
 export default function Dashboard() {
-  const [sensors, setSensors] = useState<number>(1);
+  const [sensors, setSensors] = useState<number>(0);
   return (
     <div className="max-w-[100%] overflow-x-hidden">
       <DashboardHeader />
@@ -61,12 +62,8 @@ export default function Dashboard() {
             </section>
           </>
         ) : (
-          <div className="w-full h-screen flex justify-center items-center">
-            <div className="flex flex-col gap-3 items-center">
-              <h1 className="text-2xl font-bold">Get Started</h1>
-              <p>It's a bit quiet in here. Let's get the ball rolling.</p>
-              <Button>Get Started</Button>
-            </div>
+          <div className="w-full h-[80vh] flex justify-center items-center">
+            <DashboardEmptyTemplate />
           </div>
         )}
       </>
