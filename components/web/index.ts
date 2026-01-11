@@ -1,3 +1,5 @@
+"use client";
+
 import Header from "./Header";
 import AppSidebar from "./AppSidebar";
 import DashboardHeader from "./page-headers/DashboardHeader";
@@ -8,6 +10,7 @@ import Recommendations from "./Recommendations";
 import Analytics from "./AnalyticSection";
 import { DashboardEmptyTemplate } from "./DashboardEmpty";
 import AlertsHeader from "./page-headers/AlertsHeader";
+import AlertsFilter from "./AlertsFilter";
 
 export {
   Header,
@@ -20,4 +23,5 @@ export {
   SensorsHeader,
   Analytics,
   AlertsHeader,
+  AlertsFilter,
 };

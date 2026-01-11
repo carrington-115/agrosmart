@@ -38,3 +38,20 @@ export interface recommendationsCardProps {
   content: string;
   color: string;
 }
+
+export interface alertsCardProps {
+  title: string;
+  description: string;
+  badgeType:
+    | "default"
+    | "secondary"
+    | "destructive"
+    | "outline"
+    | null
+    | undefined;
+  badgeInfo: string;
+  alertId: string;
+  viewAction?: () => void;
+  acceptAction?: () => void;
+  rejectAction?: () => void;
+}
