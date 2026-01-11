@@ -1,4 +1,8 @@
-import { AnalyticsCard, DashboardHeader } from "@/components/web";
+import {
+  AnalyticsCard,
+  DashboardHeader,
+  MonitoringLineChart,
+} from "@/components/web";
 import { analyticsProps } from "@/lib/types";
 import { CloudSun, Droplet, TreeDeciduous } from "lucide-react";
 
@@ -41,8 +45,8 @@ export default function Dashboard() {
   return (
     <div className="w-auto overflow-x-hidden">
       <DashboardHeader />
-      <section className="w-a px-4 py-5 overflow-x-hidden">
-        <div className="flex flex-col gap-4">
+      <section className="w-[100%] flex flex-col gap-5 items-center px-4 py-5 overflow-x-hidden">
+        <div className="w-full flex flex-col gap-4">
           <h2 className="text-2xl font-semibold">SSSP Data Readings</h2>
           <div className="w-full flex justify-between">
             {dataAnalysisContent.map((item) => (
@@ -50,6 +54,7 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
+        <MonitoringLineChart />
       </section>
     </div>
   );

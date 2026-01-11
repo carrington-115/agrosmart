@@ -1,3 +1,5 @@
+import { chartData } from "@/components/web/LineChart";
+
 export interface zodLoginSchema {
   email: string;
   password: string;
@@ -24,4 +26,9 @@ export interface analyticsProps {
   color: string;
   badgeStatus: string;
   badgeColor: string;
+}
+
+export interface MonitoringChartProps {
+  data?: typeof chartData;
+  className?: string;
 }
