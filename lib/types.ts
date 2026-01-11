@@ -16,3 +16,12 @@ export interface HeaderProps {
   greeting?: string;
   getReport?: boolean;
 }
+
+export interface analyticsProps {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  color: string;
+  badgeStatus: string;
+  badgeColor: string;
+}

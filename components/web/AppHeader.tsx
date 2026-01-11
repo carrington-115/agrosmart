@@ -17,7 +17,7 @@ export default function DashboardHeader({
       <div>
         {type === HeaderType.DASHBOARD ? (
           <div className="flex flex-col gap-1">
-            <h1 className="text-[24px] font-semibold">{title}</h1>
+            <h1 className="text-4xl font-bold">{title}</h1>
             <p className="text-[14px] text-muted-foreground">{greeting}</p>
           </div>
         ) : (
