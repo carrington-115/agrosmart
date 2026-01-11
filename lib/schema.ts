@@ -16,3 +16,7 @@ export const signupSchema = z
     message: "Passwords do not match",
     path: ["confirmPassword"],
   });
+
+export const searchSchema = z.object({
+  search: z.string().min(1),
+});

@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import {
-  AnalyticsCard,
+  Analytics,
   DashboardHeader,
   MonitoringLineChart,
   Recommendations,
@@ -11,7 +11,7 @@ import { analyticsProps } from "@/lib/types";
 import { CloudSun, Droplet, TreeDeciduous } from "lucide-react";
 import { useState } from "react";
 
-const dataAnalysisContent: analyticsProps[] = [
+export const dataAnalysisContent: analyticsProps[] = [
   {
     title: "Soil moisture",
     value: "30%",
@@ -54,16 +54,7 @@ export default function Dashboard() {
       <>
         {sensors > 0 ? (
           <>
-            <section className="max-w-[100%] mx-0 px-4 py-5 overflow-x-hidden">
-              <div className="w-full flex flex-col gap-4">
-                <h2 className="text-2xl font-semibold">SSSP Data Readings</h2>
-                <div className="w-full flex justify-between">
-                  {dataAnalysisContent.map((item) => (
-                    <AnalyticsCard key={item.title} {...item} />
-                  ))}
-                </div>
-              </div>
-            </section>
+            <Analytics />
             <section className="max-w-[100%] overflow-x-auto w-[100%] px-4 mx-auto flex justify-center gap-6 mb-20">
               <MonitoringLineChart />
               <Recommendations />
