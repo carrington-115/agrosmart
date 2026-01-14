@@ -11,6 +11,9 @@ import Analytics from "./AnalyticSection";
 import { DashboardEmptyTemplate } from "./DashboardEmpty";
 import AlertsHeader from "./page-headers/AlertsHeader";
 import AlertsFilter from "./AlertsFilter";
+import ChatHeader from "./page-headers/ChatHeader";
+import Suggestion from "./BotSuggestions";
+import ChatInput from "./ChatbotInput";
 
 export {
   Header,
@@ -24,4 +27,7 @@ export {
   Analytics,
   AlertsHeader,
   AlertsFilter,
+  ChatHeader,
+  Suggestion,
+  ChatInput,
 };

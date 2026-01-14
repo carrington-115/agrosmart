@@ -20,3 +20,7 @@ export const signupSchema = z
 export const searchSchema = z.object({
   search: z.string().min(1),
 });
+
+export const chatSchema = z.object({
+  message: z.string().min(1),
+});

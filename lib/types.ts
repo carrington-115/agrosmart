@@ -55,3 +55,41 @@ export interface alertsCardProps {
   acceptAction?: () => void;
   rejectAction?: () => void;
 }
+
+export interface botSuggestionsProps {
+  header: string;
+  suggestions: string;
+  footer: string;
+  action: () => void;
+}
+
+export enum modeType {
+  AUTO = "auto",
+  ALERTS = "alerts",
+  REPORTS = "reports",
+  ANALYSER = "analyser",
+  RESEARCHER = "researcher",
+  FORECASTER = "forecaster",
+}
+
+export enum modelType {
+  AUTO = "auto",
+  CUSTOM = "custom",
+}
+
+export interface webSourceProps {
+  link: string;
+}
+
+export interface chatInputProps {
+  message: string;
+  mode: modeType;
+  model: modelType;
+  files: any[];
+}
+
+export interface Message {
+  id: string;
+  content: string;
+  role: "user" | "assistant";
+}
