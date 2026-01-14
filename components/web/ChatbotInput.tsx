@@ -5,7 +5,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { chatSchema } from "@/lib/schema";
 import { useState } from "react";
-import { Message, modelType, modeType, webSourceProps } from "@/lib/types";
+import {
+  ChatUser,
+  Message,
+  modelType,
+  modeType,
+  webSourceProps,
+} from "@/lib/types";
 import { Form, FormField, FormItem, FormControl } from "../ui/form";
 import { Button } from "../ui/button";
 import { ArrowUp, Ellipsis, Mic, Paperclip, Plus } from "lucide-react";
@@ -33,7 +39,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { twMerge } from "tailwind-merge";
 
-export default function ChatInput({ messages }: { messages: Message[] }) {
+export default function ChatInput({
+  messages,
+  setMessages,
+}: {
+  messages: Message[];
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+}) {
   const [messageMode, setMessageMode] = useState<
     modelType | webSourceProps | modeType
   >(modelType.AUTO);
@@ -47,7 +59,12 @@ export default function ChatInput({ messages }: { messages: Message[] }) {
   });
 
   const onSubmit = (data: z.infer<typeof chatSchema>) => {
-    console.log(data);
+    setMessages((prev) => {
+      return [
+        ...prev,
+        { id: String(Date.now()), content: data.message, role: ChatUser.USER },
+      ];
+    });
   };
 
   return (
@@ -214,11 +231,17 @@ export default function ChatInput({ messages }: { messages: Message[] }) {
                   render={({ field }) => (
                     <FormItem>
                       <FormControl>
-                        <Input
+                        <Textarea
                           id="Ask AgroSmart"
                           placeholder="Ask AgroSmart"
-                          className="!border-none focus-visible:border-none resize-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-none w-full min-h-[2.5rem] max-h-[12rem]"
+                          className="!border-none focus-visible:border-none w-full resize-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:ring-transparent shadow-none w-full min-h-[2.5rem] max-h-[12rem]"
                           {...field}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              form.handleSubmit(onSubmit)();
+                            }
+                          }}
                         />
                       </FormControl>
                     </FormItem>

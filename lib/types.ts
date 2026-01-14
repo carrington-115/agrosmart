@@ -91,5 +91,31 @@ export interface chatInputProps {
 export interface Message {
   id: string;
   content: string;
-  role: "user" | "assistant";
+  role: ChatUser;
+  knowledgeBase?: any[];
+}
+
+export enum ChatUser {
+  USER = "user",
+  AGENT = "agent",
+}
+
+export type knowledgeBase = {
+  contextType: contextType;
+  link: string;
+  file?: boolean;
+  title?: string;
+  description?: string;
+};
+
+export interface chatElementProps {
+  message: Message;
+  role: ChatUser;
+  knowledgeBase?: knowledgeBase[] | any[];
+  attachments?: any[];
+}
+
+export enum contextType {
+  LINK = "link",
+  FILE = "file",
 }
