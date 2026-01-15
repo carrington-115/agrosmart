@@ -14,6 +14,7 @@ import AlertsFilter from "./AlertsFilter";
 import ChatHeader from "./page-headers/ChatHeader";
 import Suggestion from "./BotSuggestions";
 import ChatInput from "./ChatbotInput";
+import ReportsHeader from "./page-headers/ReportsHeader";
 
 export {
   Header,
@@ -30,4 +31,5 @@ export {
   ChatHeader,
   Suggestion,
   ChatInput,
+  ReportsHeader,
 };

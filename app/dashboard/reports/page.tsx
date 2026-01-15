@@ -1,7 +1,9 @@
+import { ReportsHeader } from "@/components/web";
+
 export default function Reports() {
   return (
     <div>
-      <h1>Reports</h1>
+      <ReportsHeader />
     </div>
   );
 }

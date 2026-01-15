@@ -119,3 +119,9 @@ export enum contextType {
   LINK = "link",
   FILE = "file",
 }
+
+export interface FilterOption {
+  label: string;
+  value: string;
+  onSelect: () => void;
+}

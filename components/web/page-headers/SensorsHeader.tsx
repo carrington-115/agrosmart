@@ -1,7 +1,7 @@
 "use client";
 
 import AppHeader from "../AppHeader";
-import { HeaderType } from "@/lib/types";
+import { FilterOption, HeaderType } from "@/lib/types";
 import {
   Settings,
   BellElectric,
@@ -34,12 +34,6 @@ const iconsButtons = [
     action: () => {},
   },
 ];
-
-interface FilterOption {
-  label: string;
-  value: string;
-  onSelect: () => void;
-}
 
 const filterOptions: FilterOption[] = [
   {
