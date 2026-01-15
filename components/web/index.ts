@@ -17,6 +17,8 @@ import ChatInput from "./ChatbotInput";
 import ReportsHeader from "./page-headers/ReportsHeader";
 import ReportsCard from "./ReportsCard";
 import DetailedReport from "./DetailedReports";
+import ProfileHeader from "./page-headers/ProfileHeader";
+import UserProfileForm from "./UserProfileInput";
 
 export {
   Header,
@@ -36,4 +38,6 @@ export {
   ReportsHeader,
   ReportsCard,
   DetailedReport,
+  ProfileHeader,
+  UserProfileForm,
 };

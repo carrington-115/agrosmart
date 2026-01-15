@@ -24,3 +24,11 @@ export const searchSchema = z.object({
 export const chatSchema = z.object({
   message: z.string().min(1),
 });
+
+export const userProfileSchema = z.object({
+  name: z.string().min(3).max(30),
+  email: z.email(),
+  address: z.string().min(5),
+  phone: z.string().min(10).max(15),
+  // profileImage: z.url(),
+});

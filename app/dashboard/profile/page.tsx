@@ -1,7 +1,10 @@
+import { ProfileHeader, UserProfileForm } from "@/components/web";
+
 export default function Settings() {
   return (
-    <div>
-      <h1>Profile</h1>
+    <div className="flex flex-col items-center gap-5 mb-12">
+      <ProfileHeader />
+      <UserProfileForm />
     </div>
   );
 }
