@@ -29,7 +29,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${roboto.variable} ${robotoMono.variable} antialiased`}>
         <SidebarProvider>
-          <main>{children}</main>
+          <main className="w-full max-w-full container">{children}</main>
           <Toaster />
         </SidebarProvider>
       </body>

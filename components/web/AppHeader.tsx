@@ -13,7 +13,7 @@ export default function DashboardHeader({
   getReport,
 }: HeaderProps) {
   return (
-    <div className="w-full mx-auto flex justify-between items-center pt-[40px] px-4 pb-[10px]">
+    <div className="w-full max-w-full mx-auto flex justify-between items-center pt-[40px] px-4 pb-[10px]">
       <div>
         {type === HeaderType.DASHBOARD ? (
           <div className="flex flex-col gap-1">

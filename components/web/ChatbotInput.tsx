@@ -181,9 +181,9 @@ export default function ChatInput({
           <Form {...form}>
             <form
               onSubmit={form.handleSubmit(onSubmit)}
-              className="flex items-center justify-between"
+              className="w-full flex items-center justify-between"
             >
-              <div className="flex gap-2 items-center">
+              <div className="flex gap-2 items-center w-[70%]">
                 <DropdownMenu>
                   <DropdownMenuTrigger>
                     <Button

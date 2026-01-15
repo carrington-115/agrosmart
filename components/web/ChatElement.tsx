@@ -97,11 +97,11 @@ export default function ChatElement({
   return (
     <section
       className={twMerge(
-        "w-full overflow-x-hidden flex items-center",
+        "max-w-full mx-auto break-words overflow-hidden flex items-center",
         role === ChatUser.USER ? "justify-end" : "justify-center"
       )}
     >
-      <div>
+      <div className="max-w-full">
         <div className="flex gap-1 items-center justify-end flex-wrap">
           {role === ChatUser.USER &&
             knowledgeBase &&
@@ -109,10 +109,10 @@ export default function ChatElement({
             someKnowledgeBase.map((context) => (
               <Badge
                 key={context.link}
-                className="bg-primary-container text-on-primary-container cursor-pointer hover:bg-on-primary-container hover:text-primary-container"
+                className="bg-primary-container text-on-primary-container cursor-pointer hover:bg-on-primary-container hover:text-primary-container shrink-0 max-w-[180px] truncate"
               >
                 {context.file ? <File /> : <Link />}
-                {context.title}{" "}
+                <span className="truncate">{context.title}</span>
                 <span className="">
                   <CircleX width={12} height={12} />
                 </span>
@@ -122,16 +122,18 @@ export default function ChatElement({
         {/* For context */}
 
         {role === ChatUser.USER ? (
-          <div className="flex flex-col items-end gap-1 mt-4">
+          <div className="max-w-full break-words overflow-hidden flex flex-col items-end gap-1 mt-4">
             <div
               className={twMerge(
-                "",
+                "max-w-full break-words overflow-hidden",
                 role === ChatUser.USER
                   ? "bg-neutral-100 px-5 py-3 max-w-[80%] rounded-tl-lg rounded-tr-4xl rounded-bl-lg rounded-br-sm"
                   : ""
               )}
             >
-              <p className="">{message.content}</p>
+              <p className="break-words hyphens-auto overflow-wrap-anywhere max-w-full">
+                {message.content}
+              </p>
             </div>
             <div className="flex items-center gap-3">
               <Button
@@ -159,7 +161,9 @@ export default function ChatElement({
                 width={50}
                 height={50}
               />
-              <p>{message.content}</p>
+              <p className="break-words hyphens-auto overflow-wrap-anywhere max-w-full">
+                {message.content}
+              </p>
             </div>
             <div className="flex items-center gap-3">
               {agentActions.map((action) => (

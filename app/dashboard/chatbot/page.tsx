@@ -116,20 +116,22 @@ export default function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
 
   return (
-    <div className="w-full flex flex-col items-center pb-[4rem]">
+    <div className="max-w-full w-full flex flex-col items-center pb-[4rem]">
       <ChatHeader />
       {messages.length > 0 ? (
         <>
-          <section className="w-[50%] flex flex-col gap-8">
-            {messages.map((message) => (
-              <ChatElement
-                key={message.id}
-                message={message}
-                role={message.role}
-                knowledgeBase={["hello"]}
-                attachments={["lll"]}
-              />
-            ))}
+          <section className="w-[60%] max-w-full break-words px-4 sm:px-6 lg:px-8 flex flex-col gap-6 overflow-x-clip">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden">
+              {messages.map((message) => (
+                <ChatElement
+                  key={message.id}
+                  message={message}
+                  role={message.role}
+                  knowledgeBase={["hello"]}
+                  attachments={["lll"]}
+                />
+              ))}
+            </div>
             <ChatElement
               message={{
                 id: "",
@@ -142,14 +144,14 @@ export default function Chatbot() {
           </section>
         </>
       ) : (
-        <div className="px-4 h-[80vh] w-full flex gap-5 flex-col items-center justify-center">
+        <div className="px-4 h-[80vh] w-full max-w-full flex gap-5 flex-col items-center justify-center overflow-x-clip">
           <div className="flex items-center gap-2">
             <Image src={agrologo} alt="agrosmart logo" width={80} height={80} />
             <h1 className="text-4xl font-bold text-on-primary-container/50">
               Ask AgroSmart
             </h1>
           </div>
-          <div className="w-full grid grid-cols-4 gap-5">
+          <div className="w-[80%] grid grid-cols-4 gap-5">
             {fakeSuggestion.map((suggestion) => (
               <Suggestion key={suggestion.header} {...suggestion} />
             ))}
@@ -158,7 +160,7 @@ export default function Chatbot() {
         </div>
       )}
       {messages.length > 0 && (
-        <section className="w-full flex justify-center items-center fixed bottom-5">
+        <section className="w-full max-w-full flex justify-center items-center fixed bottom-5">
           <ChatInput messages={messages} setMessages={setMessages} />
         </section>
       )}
