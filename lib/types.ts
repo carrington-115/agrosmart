@@ -141,3 +141,10 @@ export interface reportsCardProps {
     | undefined;
   reportsIcon: React.ReactNode;
 }
+
+export interface detailedReportProps {
+  title: string;
+  description: string;
+  exportFunction: () => void;
+  AISummary: () => void;
+}

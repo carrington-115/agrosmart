@@ -16,6 +16,7 @@ import Suggestion from "./BotSuggestions";
 import ChatInput from "./ChatbotInput";
 import ReportsHeader from "./page-headers/ReportsHeader";
 import ReportsCard from "./ReportsCard";
+import DetailedReport from "./DetailedReports";
 
 export {
   Header,
@@ -34,4 +35,5 @@ export {
   ChatInput,
   ReportsHeader,
   ReportsCard,
+  DetailedReport,
 };
