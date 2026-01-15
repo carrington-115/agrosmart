@@ -69,7 +69,7 @@ const filterDropDownOptions = [
   },
 ];
 
-export default function ReportsHeader() {
+export default function ReportsHeader({ reports }: { reports: boolean }) {
   return (
     <>
       <AppHeader
@@ -90,38 +90,43 @@ export default function ReportsHeader() {
           </>
         }
       />
-      <div className="flex flex-col w-full max-w-full gap-2 px-4">
-        <div className="flex items-center gap-3">
-          {filterOptions.map((filterOption) => (
-            <button
-              className={buttonVariants({
-                size: "default",
-                variant: "outline",
-              })}
-              key={filterOption.label}
-              type="button"
-              onClick={() => {}}
-            >
-              {filterOption.label}
-            </button>
-          ))}
+      {reports && (
+        <div className="flex flex-col w-full max-w-full gap-2 px-4">
+          <div className="flex items-center gap-3">
+            {filterOptions.map((filterOption) => (
+              <button
+                className={buttonVariants({
+                  size: "default",
+                  variant: "outline",
+                })}
+                key={filterOption.label}
+                type="button"
+                onClick={() => {}}
+              >
+                {filterOption.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-3">
+            <p>Filter by:</p>
+            <Select>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                {filterDropDownOptions.map((filterOption) => (
+                  <SelectItem
+                    key={filterOption.value}
+                    value={filterOption.value}
+                  >
+                    {filterOption.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <p>Filter by:</p>
-          <Select>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent>
-              {filterDropDownOptions.map((filterOption) => (
-                <SelectItem key={filterOption.value} value={filterOption.value}>
-                  {filterOption.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      )}
     </>
   );
 }

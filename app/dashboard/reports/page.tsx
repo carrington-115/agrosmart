@@ -1,5 +1,11 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
-import { ReportsCard, ReportsHeader } from "@/components/web";
+import {
+  DashboardEmptyTemplate,
+  ReportsCard,
+  ReportsHeader,
+} from "@/components/web";
 import { reportsCardProps } from "@/lib/types";
 import {
   BarChart3,
@@ -23,7 +29,9 @@ import {
   Zap,
   HeartPulse,
   Download,
+  FileText,
 } from "lucide-react";
+import { useState } from "react";
 
 const sampleReports: reportsCardProps[] = [
   {
@@ -43,7 +51,7 @@ const sampleReports: reportsCardProps[] = [
     reportsIcon: <Sprout />,
   },
   {
-    title: "Soil Potassium (K)",
+    title: "Soil Potassium",
     data: 285,
     description: "mg/kg",
     badgeContent: "Good",
@@ -75,7 +83,7 @@ const sampleReports: reportsCardProps[] = [
     reportsIcon: <Droplet />,
   },
   {
-    title: "Soil pH Level",
+    title: "Soil pH Level 1",
     data: 7.2,
     description: "pH",
     badgeContent: "Neutral",
@@ -83,7 +91,7 @@ const sampleReports: reportsCardProps[] = [
     reportsIcon: <Thermometer />,
   },
   {
-    title: "Soil Moisture",
+    title: "Soil Moisture 2",
     data: 34,
     description: "%",
     badgeContent: "Critical",
@@ -213,25 +221,38 @@ const sampleReports: reportsCardProps[] = [
 ];
 
 export default function Reports() {
+  const [reports, setReports] = useState<boolean>(false);
   return (
     <div>
-      <ReportsHeader />
-      <section className="flex flex-col px-4 gap-4 mt-5">
-        <div className="w-full flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Download summary report</h3>
-          <Button>
-            Download summary{" "}
-            <>
-              <Download />
-            </>
-          </Button>
+      <ReportsHeader reports={reports} />
+      {reports ? (
+        <section className="flex flex-col px-4 gap-4 mt-5">
+          <div className="w-full flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Download summary report</h3>
+            <Button>
+              Download summary{" "}
+              <>
+                <Download />
+              </>
+            </Button>
+          </div>
+          <div className="grid grid-cols-4 gap-4">
+            {sampleReports.map((report) => (
+              <ReportsCard key={report.title} {...report} />
+            ))}
+          </div>
+        </section>
+      ) : (
+        <div className="w-full h-[80vh] flex justify-center items-center">
+          <DashboardEmptyTemplate
+            Icon={<FileText />}
+            title="No reports found"
+            description="You have no reports to view."
+            actionText="Get Started"
+            action={() => setReports(true)}
+          />
         </div>
-        <div className="grid grid-cols-4 gap-4">
-          {sampleReports.map((report) => (
-            <ReportsCard key={report.title} {...report} />
-          ))}
-        </div>
-      </section>
+      )}
     </div>
   );
 }
