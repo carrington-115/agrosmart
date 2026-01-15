@@ -123,6 +123,7 @@ export enum contextType {
 export interface FilterOption {
   label: string;
   value: string;
+  link?: string;
   onSelect: () => void;
 }
 

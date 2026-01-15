@@ -194,6 +194,7 @@ export default function ChatElement({
                 width={100}
                 height={100}
                 className="rounded-lg cursor-pointer"
+                key={attachment.link}
               />
             ))}
           </div>

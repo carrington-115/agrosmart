@@ -1,11 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import {
-  DashboardEmptyTemplate,
-  ReportsCard,
-  ReportsHeader,
-} from "@/components/web";
+import { DashboardEmptyTemplate, ReportsCard } from "@/components/web";
 import { reportsCardProps } from "@/lib/types";
 import {
   BarChart3,
@@ -224,7 +220,6 @@ export default function Reports() {
   const [reports, setReports] = useState<boolean>(false);
   return (
     <div>
-      <ReportsHeader reports={reports} />
       {reports ? (
         <section className="flex flex-col px-4 gap-4 mt-5">
           <div className="w-full flex items-center justify-between">
@@ -236,7 +231,7 @@ export default function Reports() {
               </>
             </Button>
           </div>
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-4 gap-4 mb-16">
             {sampleReports.map((report) => (
               <ReportsCard key={report.title} {...report} />
             ))}

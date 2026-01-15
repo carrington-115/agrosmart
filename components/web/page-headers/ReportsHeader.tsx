@@ -1,3 +1,5 @@
+"use client";
+
 import AppHeader from "../AppHeader";
 import { FilterOption, HeaderType } from "@/lib/types";
 import { buttonVariants } from "@/components/ui/button";
@@ -9,6 +11,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import Link from "next/link";
+import { twMerge } from "tailwind-merge";
+import { usePathname } from "next/navigation";
 
 const iconsButtons = [
   {
@@ -32,16 +37,19 @@ const filterOptions: FilterOption[] = [
   {
     label: "Overview",
     value: "overview",
+    link: "/dashboard/reports",
     onSelect: () => {},
   },
   {
     label: "Reports",
     value: "reports",
+    link: "/dashboard/reports/detailed",
     onSelect: () => {},
   },
   {
     label: "Recommendations",
     value: "recommendations",
+    link: "/dashboard/reports/recommendations",
     onSelect: () => {},
   },
 ];
@@ -70,6 +78,8 @@ const filterDropDownOptions = [
 ];
 
 export default function ReportsHeader({ reports }: { reports: boolean }) {
+  const pathname = usePathname();
+
   return (
     <>
       <AppHeader
@@ -94,37 +104,42 @@ export default function ReportsHeader({ reports }: { reports: boolean }) {
         <div className="flex flex-col w-full max-w-full gap-2 px-4">
           <div className="flex items-center gap-3">
             {filterOptions.map((filterOption) => (
-              <button
-                className={buttonVariants({
-                  size: "default",
-                  variant: "outline",
-                })}
+              <Link
+                href={filterOption.link ? filterOption.link : ""}
+                className={twMerge(
+                  buttonVariants({
+                    size: "default",
+                    variant: "outline",
+                  }),
+                  filterOption.link === pathname &&
+                    "bg-primary text-primary-foreground"
+                )}
                 key={filterOption.label}
-                type="button"
-                onClick={() => {}}
               >
                 {filterOption.label}
-              </button>
+              </Link>
             ))}
           </div>
-          <div className="flex items-center gap-3">
-            <p>Filter by:</p>
-            <Select>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="All" />
-              </SelectTrigger>
-              <SelectContent>
-                {filterDropDownOptions.map((filterOption) => (
-                  <SelectItem
-                    key={filterOption.value}
-                    value={filterOption.value}
-                  >
-                    {filterOption.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {pathname === "/dashboard/reports" && (
+            <div className="flex items-center gap-3">
+              <p>Filter by:</p>
+              <Select>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filterDropDownOptions.map((filterOption) => (
+                    <SelectItem
+                      key={filterOption.value}
+                      value={filterOption.value}
+                    >
+                      {filterOption.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
       )}
     </>
