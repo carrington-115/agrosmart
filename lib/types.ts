@@ -125,3 +125,18 @@ export interface FilterOption {
   value: string;
   onSelect: () => void;
 }
+
+export interface reportsCardProps {
+  title: string;
+  data: number;
+  description?: string;
+  badgeContent: string;
+  badgeVariant:
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | null
+    | undefined;
+  reportsIcon: React.ReactNode;
+}
