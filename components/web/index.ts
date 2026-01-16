@@ -19,6 +19,8 @@ import ReportsCard from "./ReportsCard";
 import DetailedReport from "./DetailedReports";
 import ProfileHeader from "./page-headers/ProfileHeader";
 import UserProfileForm from "./UserProfileInput";
+import SettingsHeader from "./page-headers/SettingsHeader";
+import SettingsCheck from "./SettingsCheckComponent";
 
 export {
   Header,
@@ -40,4 +42,6 @@ export {
   DetailedReport,
   ProfileHeader,
   UserProfileForm,
+  SettingsHeader,
+  SettingsCheck,
 };

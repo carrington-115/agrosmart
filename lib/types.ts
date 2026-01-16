@@ -148,3 +148,14 @@ export interface detailedReportProps {
   exportFunction: () => void;
   AISummary: () => void;
 }
+
+type checkType = {
+  id: string;
+  label: string;
+};
+
+export interface settingsCheckType {
+  checkContent: checkType[];
+  title: string;
+  addSensor: boolean;
+}
