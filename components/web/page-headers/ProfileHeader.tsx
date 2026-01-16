@@ -24,7 +24,7 @@ const iconsButtons = [
 
 export default function ProfileHeader() {
   return (
-    <div className="w-full">
+    <div className="w-full sticky">
       <AppHeader
         type={HeaderType.DASHBOARD}
         title="Profile"

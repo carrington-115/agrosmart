@@ -32,3 +32,14 @@ export const userProfileSchema = z.object({
   phone: z.string().min(10).max(15),
   // profileImage: z.url(),
 });
+
+export const farmProfileSchema = z.object({
+  country: z.string().min(3).max(30),
+  city: z.string().min(3).max(30),
+  address: z.string().min(5),
+  state: z.string().min(3).max(30),
+  farmSize: z.number().min(1),
+  farmZones: z.number().min(1),
+  farmType: z.string().min(3).max(30),
+  farmName: z.string().min(3).max(30),
+});
