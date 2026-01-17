@@ -159,3 +159,21 @@ export interface settingsCheckType {
   title: string;
   addSensor: boolean;
 }
+
+type npk = {
+  nitrogen: number;
+  phosphorus: number;
+  potassium: number;
+};
+
+export interface Sensor {
+  sensorId: string;
+  temperature: number;
+  ph: number;
+  sunlight: number;
+  moisture: number;
+  salinity: number;
+  npk: npk;
+  status: "normal" | "warning" | "offline"; // these are just test labels
+  actions: any;
+}

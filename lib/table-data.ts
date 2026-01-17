@@ -1,26 +1,116 @@
-import { alertsCardProps } from "./types";
+import { alertsCardProps, Sensor } from "./types";
 
-type Payment = {
-  id: string;
-  amount: number;
-  status: "pending" | "processing" | "success" | "failed";
-  email: string;
-};
-
-export const payments: Payment[] = [
+export const sampleSensors: Sensor[] = [
   {
-    id: "728ed52f",
-    amount: 100,
-    status: "pending",
-    email: "m@example.com",
+    sensorId: "SENSOR-LKO-001",
+    temperature: 24.8,
+    ph: 7.1,
+    sunlight: 780, // lux
+    moisture: 42,
+    salinity: 0.38, // dS/m
+    npk: { nitrogen: 95, phosphorus: 52, potassium: 210 },
+    status: "normal",
+    actions: { alert: false, calibrate: false },
   },
   {
-    id: "489e1d42",
-    amount: 125,
-    status: "processing",
-    email: "example@gmail.com",
+    sensorId: "SENSOR-LKO-002",
+    temperature: 26.2,
+    ph: 6.8,
+    sunlight: 920,
+    moisture: 28,
+    salinity: 0.45,
+    npk: { nitrogen: 78, phosphorus: 38, potassium: 180 },
+    status: "warning",
+    actions: { alert: true, calibrate: false }, // low moisture trigger
   },
-  // ...
+  {
+    sensorId: "SENSOR-LKO-003",
+    temperature: 22.5,
+    ph: 7.4,
+    sunlight: 650,
+    moisture: 55,
+    salinity: 0.32,
+    npk: { nitrogen: 142, phosphorus: 68, potassium: 320 },
+    status: "normal",
+    actions: { alert: false, calibrate: false },
+  },
+  {
+    sensorId: "SENSOR-LKO-004",
+    temperature: 27.9,
+    ph: 8.1,
+    sunlight: 1050,
+    moisture: 19,
+    salinity: 0.62,
+    npk: { nitrogen: 65, phosphorus: 22, potassium: 145 },
+    status: "warning",
+    actions: { alert: true, calibrate: true }, // high salinity + low P
+  },
+  {
+    sensorId: "SENSOR-LKO-005",
+    temperature: 25.1,
+    ph: 7.0,
+    sunlight: 810,
+    moisture: 48,
+    salinity: 0.41,
+    npk: { nitrogen: 110, phosphorus: 55, potassium: 265 },
+    status: "normal",
+    actions: { alert: false, calibrate: false },
+  },
+  {
+    sensorId: "SENSOR-LKO-006",
+    temperature: 28.4,
+    ph: 6.5,
+    sunlight: 450, // cloudy afternoon
+    moisture: 35,
+    salinity: 0.55,
+    npk: { nitrogen: 88, phosphorus: 45, potassium: 198 },
+    status: "warning",
+    actions: { alert: true, calibrate: false }, // slight acidity + moderate salinity
+  },
+  {
+    sensorId: "SENSOR-LKO-007",
+    temperature: 23.7,
+    ph: 7.6,
+    sunlight: 890,
+    moisture: 62,
+    salinity: 0.29,
+    npk: { nitrogen: 165, phosphorus: 72, potassium: 380 },
+    status: "normal",
+    actions: { alert: false, calibrate: false },
+  },
+  {
+    sensorId: "SENSOR-LKO-008",
+    temperature: 29.2,
+    ph: 8.3,
+    sunlight: 1120,
+    moisture: 15,
+    salinity: 0.78,
+    npk: { nitrogen: 52, phosphorus: 18, potassium: 120 },
+    status: "offline",
+    actions: { alert: true, calibrate: true }, // multiple critical parameters
+  },
+  {
+    sensorId: "SENSOR-LKO-009",
+    temperature: 24.9,
+    ph: 7.2,
+    sunlight: 760,
+    moisture: 51,
+    salinity: 0.36,
+    npk: { nitrogen: 102, phosphorus: 60, potassium: 240 },
+    status: "normal",
+    actions: { alert: false, calibrate: false },
+  },
+  {
+    sensorId: "SENSOR-LKO-010",
+    temperature: 26.8,
+    ph: 6.9,
+    sunlight: 980,
+    moisture: 31,
+    salinity: 0.48,
+    npk: { nitrogen: 84, phosphorus: 41, potassium: 175 },
+    status: "warning",
+    actions: { alert: true, calibrate: false },
+  },
 ];
 
 // fake test data using <AlertsCard />

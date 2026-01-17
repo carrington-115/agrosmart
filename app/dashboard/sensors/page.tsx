@@ -7,6 +7,7 @@ import {
 } from "@/components/web";
 import { useState } from "react";
 import { SatelliteDish } from "lucide-react";
+import { DataTableDemo } from "@/components/web/DataTable";
 
 export default function Sensors() {
   const [sensors, setSensors] = useState<number>(0);
@@ -30,6 +31,9 @@ export default function Sensors() {
           </section>
         )}
       </>
+      <div className="w-full px-4 mx-auto">
+        <DataTableDemo />
+      </div>
     </div>
   );
 }
