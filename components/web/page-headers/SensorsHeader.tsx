@@ -24,15 +24,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import SensorDialog from "../AddSensor";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-
 const iconsButtons = [
   {
     Icon: Settings,
@@ -89,7 +80,7 @@ export default function SensorsHeader() {
               </button>
             ))}
             <Button onClick={() => setOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" /> Add new sensor
+              <Plus /> Add sensor
             </Button>
             <SensorDialog open={open} onOpenChange={setOpen} />
           </>

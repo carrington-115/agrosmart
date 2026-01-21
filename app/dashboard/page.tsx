@@ -48,8 +48,8 @@ export const dataAnalysisContent: analyticsProps[] = [
 ];
 
 export default function Dashboard() {
-  const [sensors, setSensors] = useState<number>(0);
   const router = useRouter();
+  const [sensors, setSensors] = useState<number>(0);
 
   return (
     <div className="max-w-[100%] overflow-x-hidden">

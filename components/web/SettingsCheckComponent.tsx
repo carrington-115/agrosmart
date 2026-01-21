@@ -28,7 +28,7 @@ export default function SettingsCheck({
         )}
       </div>
       {checkContent.map((item) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" key={item.id}>
           <Checkbox id={item.id} />
           <Label htmlFor={item.id}>{item.label}</Label>
         </div>

@@ -5,10 +5,10 @@ import {
   DashboardEmptyTemplate,
   SensorsHeader,
 } from "@/components/web";
-import { useState } from "react";
 import { SatelliteDish } from "lucide-react";
 import { DataTableDemo } from "@/components/web/DataTable";
 import SensorDialog from "@/components/web/AddSensor";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function Sensors() {

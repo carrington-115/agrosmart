@@ -121,6 +121,16 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+[data-radix-portal] [data-radix-overlay] {
+  background: rgba(0, 0, 0, 0.4) !important;
+}
+[data-radix-portal] [data-radix-dialog-content] {
+  background: white !important;
+  z-index: 999999 !important;
+  transform: none !important; /* disable animations for test */
+  opacity: 1 !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
