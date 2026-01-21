@@ -43,3 +43,8 @@ export const farmProfileSchema = z.object({
   farmType: z.string().min(3).max(30),
   farmName: z.string().min(3).max(30),
 });
+
+export const sensorSchema = z.object({
+  sensorId: z.string().length(7),
+  sensorTag: z.string().min(3).max(16),
+});

@@ -77,6 +77,7 @@ export default function Login() {
         return;
       }
       toast.success("Signup successful");
+      signupForm.reset();
       router.push("/dashboard");
     });
   }
@@ -94,6 +95,7 @@ export default function Login() {
         return;
       }
       toast.success("Login successful");
+      loginForm.reset();
       router.push("/dashboard");
     });
   }
@@ -214,7 +216,7 @@ export default function Login() {
                     href="/"
                     className={twMerge(
                       buttonVariants({ variant: "link" }),
-                      "px-0 underline hover:text-on-primary-container"
+                      "px-0 underline hover:text-on-primary-container",
                     )}
                   >
                     Terms
@@ -226,7 +228,7 @@ export default function Login() {
                     href="/"
                     className={twMerge(
                       buttonVariants({ variant: "link" }),
-                      "px-0 underline hover:text-on-primary-container"
+                      "px-0 underline hover:text-on-primary-container",
                     )}
                   >
                     Privacy Policy
@@ -392,7 +394,7 @@ export default function Login() {
                     href="/"
                     className={twMerge(
                       buttonVariants({ variant: "link" }),
-                      "px-0 underline hover:text-on-primary-container"
+                      "px-0 underline hover:text-on-primary-container",
                     )}
                   >
                     Terms
@@ -404,7 +406,7 @@ export default function Login() {
                     href="/"
                     className={twMerge(
                       buttonVariants({ variant: "link" }),
-                      "px-0 underline hover:text-on-primary-container"
+                      "px-0 underline hover:text-on-primary-container",
                     )}
                   >
                     Privacy Policy
