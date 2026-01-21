@@ -8,10 +8,12 @@ import {
 import AlertsCard from "@/components/web/AlertsCard";
 import { mockAlerts } from "@/lib/table-data";
 import { AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function Alerts() {
   const [alerts, setAlerts] = useState<number>(0);
+  const router = useRouter();
   return (
     <div className="container w-[100%] max-w-full mx-auto">
       <AlertsHeader />
@@ -41,7 +43,8 @@ export default function Alerts() {
             title="Get Started"
             description="It's a bit quiet in here. Let's get the ball rolling. Add sensors, get realtime visualization, and get AI powered features through chats, alerts, and recommendations."
             actionText="Add sensors"
-            action={() => setAlerts(1)}
+            action={() => router.push("/dashboard/sensors")}
+            anotherButtonAction={() => router.push("/dashboard/settings")}
           />
         </section>
       )}

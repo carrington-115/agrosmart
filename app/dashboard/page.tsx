@@ -9,6 +9,7 @@ import {
 } from "@/components/web";
 import { analyticsProps } from "@/lib/types";
 import { CloudSun, Droplet, File, TreeDeciduous } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export const dataAnalysisContent: analyticsProps[] = [
@@ -48,6 +49,8 @@ export const dataAnalysisContent: analyticsProps[] = [
 
 export default function Dashboard() {
   const [sensors, setSensors] = useState<number>(0);
+  const router = useRouter();
+
   return (
     <div className="max-w-[100%] overflow-x-hidden">
       <DashboardHeader />
@@ -67,7 +70,8 @@ export default function Dashboard() {
               title="Get Started"
               description="It's a bit quiet in here. Let's get the ball rolling. Add sensors, get realtime visualization, and get AI powered features through chats, alerts, and recommendations."
               actionText="Add sensors"
-              action={() => setSensors(1)}
+              action={() => router.push("/dashboard/sensors")}
+              anotherButtonAction={() => router.push("/dashboard/settings")}
             />
           </div>
         )}

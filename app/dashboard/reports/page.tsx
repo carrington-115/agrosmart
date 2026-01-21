@@ -27,6 +27,7 @@ import {
   Download,
   FileText,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const sampleReports: reportsCardProps[] = [
@@ -218,6 +219,7 @@ const sampleReports: reportsCardProps[] = [
 
 export default function Reports() {
   const [reports, setReports] = useState<boolean>(false);
+  const router = useRouter();
   return (
     <div>
       {reports ? (
@@ -244,7 +246,8 @@ export default function Reports() {
             title="No reports found"
             description="You have no reports to view."
             actionText="Get Started"
-            action={() => setReports(true)}
+            action={() => router.push("/dashboard/sensors")}
+            anotherButtonAction={() => router.push("/dashboard/settings")}
           />
         </div>
       )}

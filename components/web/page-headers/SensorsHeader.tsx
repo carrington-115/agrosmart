@@ -5,10 +5,10 @@ import { FilterOption, HeaderType } from "@/lib/types";
 import {
   Settings,
   BellElectric,
-  Plus,
   SearchIcon,
   Table,
   Grid,
+  Plus,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,17 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from "react";
+import SensorDialog from "../AddSensor";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const iconsButtons = [
   {
@@ -59,6 +70,7 @@ const filterOptions: FilterOption[] = [
 ];
 
 export default function SensorsHeader() {
+  const [open, setOpen] = useState(false);
   return (
     <>
       <AppHeader
@@ -71,17 +83,15 @@ export default function SensorsHeader() {
                 className={buttonVariants({ size: "icon", variant: "ghost" })}
                 key={iconButton.label}
                 type="button"
-                onClick={iconButton.action}
+                // onClick={iconButton.action}
               >
                 <iconButton.Icon />
               </button>
             ))}
-            <Button variant="default">
-              <>
-                <Plus />
-              </>
-              Add Sensor
+            <Button onClick={() => setOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Add new sensor
             </Button>
+            <SensorDialog open={open} onOpenChange={setOpen} />
           </>
         }
       />

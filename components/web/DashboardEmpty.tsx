@@ -14,6 +14,8 @@ interface DashboardEmptyTemplateProps {
   description: string;
   actionText: string;
   action: () => void;
+  anotherButtonActionText?: string;
+  anotherButtonAction?: () => void;
 }
 
 export function DashboardEmptyTemplate({
@@ -22,6 +24,8 @@ export function DashboardEmptyTemplate({
   description,
   actionText,
   action,
+  anotherButtonActionText,
+  anotherButtonAction,
 }: DashboardEmptyTemplateProps) {
   return (
     <Empty>
@@ -33,7 +37,14 @@ export function DashboardEmptyTemplate({
       <EmptyContent>
         <div className="flex gap-2">
           <Button onClick={action}>{actionText}</Button>
-          <Button variant="outline">Go to Settings</Button>
+          <Button
+            variant="outline"
+            onClick={anotherButtonAction && anotherButtonAction}
+          >
+            {anotherButtonActionText
+              ? anotherButtonActionText
+              : "Go to Settings"}
+          </Button>
         </div>
       </EmptyContent>
     </Empty>
