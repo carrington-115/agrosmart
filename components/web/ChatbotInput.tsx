@@ -185,7 +185,7 @@ export default function ChatInput({
             >
               <div className="flex gap-2 items-center w-[70%]">
                 <DropdownMenu>
-                  <DropdownMenuTrigger>
+                  <DropdownMenuTrigger asChild>
                     <Button
                       size={"icon-lg"}
                       className="rounded-full bg-transparent text-black hover:bg-neutral-200/50"
