@@ -12,7 +12,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function Sensors() {
-  const [sensors, setSensors] = useState<number>(0);
+  const [sensors, setSensors] = useState<number>(1);
   const [open, setOpen] = useState<boolean>(false);
 
   const router = useRouter();

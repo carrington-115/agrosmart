@@ -98,7 +98,7 @@ export default function ChatElement({
     <section
       className={twMerge(
         "max-w-full mx-auto break-words overflow-hidden flex items-center",
-        role === ChatUser.USER ? "justify-end" : "justify-center"
+        role === ChatUser.USER ? "justify-end" : "justify-center",
       )}
     >
       <div className="max-w-full">
@@ -128,13 +128,30 @@ export default function ChatElement({
                 "max-w-full break-words overflow-hidden",
                 role === ChatUser.USER
                   ? "bg-neutral-100 px-5 py-3 max-w-[80%] rounded-tl-lg rounded-tr-4xl rounded-bl-lg rounded-br-sm"
-                  : ""
+                  : "",
               )}
             >
               <p className="break-words hyphens-auto overflow-wrap-anywhere max-w-full">
                 {message.content}
               </p>
             </div>
+            {/* For added imagews to the prompt */}
+            {attachments &&
+              attachments.length > 0 &&
+              role === ChatUser.USER && (
+                <div className="w-full overflow-x-auto flex justify-end gap-2 mt-4">
+                  {someAttachments.map((attachment) => (
+                    <Image
+                      src={attachment.link}
+                      alt={attachment.link}
+                      width={100}
+                      height={100}
+                      className="rounded-lg cursor-pointer"
+                      key={attachment.link}
+                    />
+                  ))}
+                </div>
+              )}
             <div className="flex items-center gap-3">
               <Button
                 variant={"ghost"}
@@ -181,22 +198,6 @@ export default function ChatElement({
                 Export as PDF <Share />
               </Button>
             </div>
-          </div>
-        )}
-
-        {/* For added imagews to the prompt */}
-        {attachments && attachments.length > 0 && role === ChatUser.USER && (
-          <div className="w-full overflow-x-auto flex justify-end gap-2 mt-4">
-            {someAttachments.map((attachment) => (
-              <Image
-                src={attachment.link}
-                alt={attachment.link}
-                width={100}
-                height={100}
-                className="rounded-lg cursor-pointer"
-                key={attachment.link}
-              />
-            ))}
           </div>
         )}
       </div>

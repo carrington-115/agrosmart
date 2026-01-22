@@ -71,7 +71,7 @@ export default function ChatInput({
     <div
       className={twMerge(
         "w-[60%] bg-neutral-100",
-        messages.length > 0 ? "rounded-xl p-4" : "rounded-full p-2"
+        messages.length > 0 ? "rounded-xl p-4" : "rounded-full p-2",
       )}
     >
       {messages.length > 0 ? (
@@ -129,7 +129,7 @@ export default function ChatInput({
                   </Select>
                   <>
                     <DropdownMenu>
-                      <DropdownMenuTrigger>
+                      <DropdownMenuTrigger asChild>
                         <Button
                           variant={"ghost"}
                           size={"icon"}

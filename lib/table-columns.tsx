@@ -13,6 +13,7 @@ import {
 import { MoreHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Sensor } from "./types";
+import { useRouter } from "next/navigation";
 
 export const columns: ColumnDef<Sensor>[] = [
   {
@@ -131,8 +132,8 @@ export const columns: ColumnDef<Sensor>[] = [
             status === "normal"
               ? "default"
               : status === "offline"
-              ? "destructive"
-              : "secondary"
+                ? "destructive"
+                : "secondary"
           }
         >
           {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -146,6 +147,7 @@ export const columns: ColumnDef<Sensor>[] = [
     enableHiding: false,
     cell: ({ row }) => {
       const sensor = row.original;
+      const router = useRouter();
 
       return (
         <DropdownMenu>
@@ -163,8 +165,16 @@ export const columns: ColumnDef<Sensor>[] = [
               Copy Sensor ID
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>View Details</DropdownMenuItem>
-            <DropdownMenuItem>Calibrate Sensor</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() =>
+                router.push(`/dashboard/sensors/${sensor.sensorId}`)
+              }
+            >
+              View Details
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-destructive">
+              Delete sensor
+            </DropdownMenuItem>
             <DropdownMenuItem className="text-destructive">
               {sensor.actions.alert ? "Acknowledge Alert" : "Set Alert"}
             </DropdownMenuItem>
