@@ -16,7 +16,7 @@ export default function Analytics() {
             View all <ArrowRight />
           </Button>
         </div>
-        <div className="w-full flex justify-between">
+        <div className="w-full grid grid-cols-4 gap-5 justify-between">
           {dataAnalysisContent.map((item) => (
             <AnalyticsCard key={item.title} {...item} />
           ))}

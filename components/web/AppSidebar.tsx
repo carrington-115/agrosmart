@@ -22,6 +22,7 @@ import {
   ScrollText,
   User2Icon,
   Settings,
+  LucideIcon,
 } from "lucide-react";
 import Image from "next/image";
 import Logo from "@/assets/images/logo-light.svg";
@@ -31,7 +32,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 // Menu items.
-const items = {
+
+interface MenuItem {
+  title: string;
+  url: string;
+  optUrl?: string;
+  icon: LucideIcon;
+}
+
+const items: { header: MenuItem[]; footer: MenuItem[] } = {
   header: [
     {
       title: "Dashboard",
@@ -41,6 +50,7 @@ const items = {
     {
       title: "Sensors",
       url: "/dashboard/sensors",
+      optUrl: "/dashboard/sensors/",
       icon: SatelliteDish,
     },
     {
@@ -51,11 +61,13 @@ const items = {
     {
       title: "Chatbot",
       url: "/dashboard/chatbot",
+      optUrl: "/dashboard/chatbot/[chatID]",
       icon: BotMessageSquare,
     },
     {
       title: "Reports",
       url: "/dashboard/reports",
+      optUrl: "/dashboard/reports/[reportID]", // to be edited
       icon: ScrollText,
     },
   ],
@@ -95,11 +107,11 @@ export default function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    isActive={item.url === pathname}
+                    isActive={item.url === pathname || item.optUrl === pathname}
                     className={twMerge(
                       "hover:!bg-on-primary-container/5 hover:!text-on-primary-container",
-                      item.url === pathname &&
-                        "!bg-primary !text-primary-foreground hover:!bg-primary hover:!text-white"
+                      (item.url === pathname || item.optUrl === pathname) &&
+                        "!bg-primary !text-primary-foreground hover:!bg-primary hover:!text-white",
                     )}
                   >
                     <Link href={item.url}>
@@ -131,7 +143,7 @@ export default function AppSidebar() {
                     className={twMerge(
                       "hover:!bg-on-primary-container/5 hover:!text-on-primary-container",
                       item.url === pathname &&
-                        "!bg-primary !text-primary-foreground hover:!bg-primary hover:!text-white"
+                        "!bg-primary !text-primary-foreground hover:!bg-primary hover:!text-white",
                     )}
                   >
                     <Link href={item.url}>
@@ -144,7 +156,7 @@ export default function AppSidebar() {
                         className={twMerge(
                           !sidebarOpen && "!size-5",
                           pathname === item.url &&
-                            "!fill-[var(--primary-foreground)]"
+                            "!fill-[var(--primary-foreground)]",
                         )}
                       />
                       <span>{item.title}</span>

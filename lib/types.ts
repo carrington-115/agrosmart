@@ -26,6 +26,7 @@ export interface analyticsProps {
   color: string;
   badgeStatus: string;
   badgeColor: string;
+  sensorView?: boolean;
 }
 
 export interface MonitoringChartProps {

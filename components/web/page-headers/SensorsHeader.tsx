@@ -60,8 +60,12 @@ const filterOptions: FilterOption[] = [
   },
 ];
 
-export default function SensorsHeader() {
-  const [open, setOpen] = useState(false);
+export default function SensorsHeader({
+  showFilters,
+}: {
+  showFilters: boolean;
+}) {
+  const [open, setOpen] = useState<boolean>(false);
   return (
     <>
       <AppHeader
@@ -86,51 +90,53 @@ export default function SensorsHeader() {
           </>
         }
       />
-      <div className="w-full px-4 flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <p className="text-sm font-medium whitespace-nowrap">Filter by:</p>
-          {filterOptions.map((filterOption) => (
-            <button
-              className={buttonVariants({
-                size: "default",
-                variant: "outline",
-              })}
-              key={filterOption.label}
-              type="button"
-              onClick={() => {}}
-            >
-              {filterOption.label}
-            </button>
-          ))}
-          <InputGroup>
-            <InputGroupInput placeholder="Search..." />
-            <InputGroupAddon>
-              <SearchIcon />
-            </InputGroupAddon>
-            <InputGroupAddon align="inline-end">
-              <InputGroupButton>Search</InputGroupButton>
-            </InputGroupAddon>
-          </InputGroup>
-        </div>
-        <div className="">
-          <Tabs defaultValue="table">
-            <TabsList className="!bg-primary-container !text-on-primary-container">
-              <TabsTrigger
-                value="table"
-                className="data-[state=active]:!bg-on-primary-container data-[state=active]:!text-primary-container"
+      {showFilters && (
+        <div className="w-full px-4 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <p className="text-sm font-medium whitespace-nowrap">Filter by:</p>
+            {filterOptions.map((filterOption) => (
+              <button
+                className={buttonVariants({
+                  size: "default",
+                  variant: "outline",
+                })}
+                key={filterOption.label}
+                type="button"
+                onClick={() => {}}
               >
-                <Table />
-              </TabsTrigger>
-              <TabsTrigger
-                value="grid"
-                className="data-[state=active]:!bg-on-primary-container data-[state=active]:!text-primary-container"
-              >
-                <Grid />
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+                {filterOption.label}
+              </button>
+            ))}
+            <InputGroup>
+              <InputGroupInput placeholder="Search..." />
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton>Search</InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+          </div>
+          <div className="">
+            <Tabs defaultValue="table">
+              <TabsList className="!bg-primary-container !text-on-primary-container">
+                <TabsTrigger
+                  value="table"
+                  className="data-[state=active]:!bg-on-primary-container data-[state=active]:!text-primary-container"
+                >
+                  <Table />
+                </TabsTrigger>
+                <TabsTrigger
+                  value="grid"
+                  className="data-[state=active]:!bg-on-primary-container data-[state=active]:!text-primary-container"
+                >
+                  <Grid />
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
 }

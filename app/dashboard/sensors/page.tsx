@@ -19,7 +19,7 @@ export default function Sensors() {
 
   return (
     <div className="max-w-[100%] mx-auto overflow-x-hidden">
-      <SensorsHeader />
+      <SensorsHeader showFilters={sensors > 0} />
       <>
         {sensors > 0 ? (
           <>
