@@ -1,41 +1,24 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Repository root. Per-project ignores live in agroapp/.gitignore and
+# agroapi/.gitignore, which are anchored to their own directories — only rules
+# that genuinely apply to the whole tree belong here.
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
+# OS
 .DS_Store
-*.pem
+Thumbs.db
 
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
+# Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
 
-# env files (can opt-in for committing if needed)
-.env*
+# Secrets, belt-and-braces. Each project also ignores its own env files; this
+# catches anything dropped at the root by mistake.
+.env
+.env.*
+!.env.example
 
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Kubernetes manifests rendered with real values. Templates under deploy/ are
+# committed; anything ending -local or -secret is not.
+deploy/**/*-local.yaml
+deploy/**/*-secret.yaml
