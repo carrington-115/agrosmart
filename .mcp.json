@@ -1,0 +1,32 @@
+{
+  "$comment": [
+    "Project-scoped MCP servers for AgroSmart. See CLAUDE.md for why each is here.",
+    "Secrets come from the environment, never from this file — it is committed.",
+    "Set SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_REF in your shell before starting.",
+    "The supabase server runs --read-only: schema inspection and log reading are the",
+    "daily need, while migrations go through `supabase db push` so they stay in version",
+    "control. Remove the flag deliberately, not by habit."
+  ],
+  "mcpServers": {
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--read-only",
+        "--project-ref=${SUPABASE_PROJECT_REF}"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
+      }
+    },
+    "figma": {
+      "type": "http",
+      "url": "https://mcp.figma.com/mcp"
+    },
+    "vercel": {
+      "type": "http",
+      "url": "https://mcp.vercel.com"
+    }
+  }
+}
