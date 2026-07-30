@@ -1,0 +1,15 @@
+{
+  "v": 1,
+  "sensorId": "AGS-001",
+  "ts": 1753900120,
+  "uid": "d0e5b3271a9c4f68",
+  "readings": {
+    "temperature": 31.4,
+    "moisture": 4.2,
+    "salinity": 0.0,
+    "phSoil": 7.10,
+    "npk": { "nitrogen": 0, "phosphorus": 0, "potassium": 0 }
+  },
+  "quality": { "npkEstimated": true, "stabilising": false, "soilDry": true },
+  "diag": { "rssi": -68, "uptime": 38331, "fw": "0.1.0" }
+}

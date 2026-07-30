@@ -1,0 +1,8 @@
+{
+  "v": 1,
+  "sensorId": "AGS-001",
+  "uid": "c1a4f2836d5e0b97",
+  "readings": {},
+  "quality": { "npkEstimated": true, "stabilising": true, "soilDry": false },
+  "diag": { "uptime": 12, "fw": "0.1.0" }
+}

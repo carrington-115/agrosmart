@@ -1,0 +1,58 @@
+[project]
+name = "agroapi"
+version = "0.1.0"
+description = "AgroSmart backend — device telemetry ingest and dashboard read API"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "asyncpg>=0.30",
+    "pyjwt[crypto]>=2.9",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.7",
+    "mypy>=1.13",
+    # asyncpg ships no py.typed marker, and this module is the security-critical
+    # one — NewType over Connection is what keeps a service connection out of a
+    # user-scoped repository function, and that only works with real types.
+    "asyncpg-stubs>=0.30",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agroapi"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+# Integration tests need a migrated database; the pure suite does not. CI runs
+# `-m "not integration"` first so the fast, hardware-free layer gates everything
+# else — the same ordering agrosensor's CI uses for its host-side tests.
+markers = ["integration: requires a live migrated Postgres"]
+
+[tool.ruff]
+line-length = 96
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF", "ASYNC"]
+# Used deliberately in prose: en dashes in ranges ("3–9"), and the units and
+# tolerances quoted from the hardware datasheets ("±0.3", "24.8 °C", "µS/cm").
+# Rewriting those to ASCII would make the docs less faithful to the contract
+# they describe.
+allowed-confusables = ["–", "—", "±", "°", "µ"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src", "tests"]
