@@ -1,0 +1,24 @@
+# Everything the build does not need. Keeps the context small and, more
+# importantly, keeps secrets and local state out of the image.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Tests are not shipped: they are a CI gate, not a runtime artefact.
+tests/
+
+# Secrets. The image takes configuration from the environment.
+.env
+.env.*
+
+Dockerfile
+.dockerignore
+README.md

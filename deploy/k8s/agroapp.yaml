@@ -1,0 +1,112 @@
+# Dashboard.
+#
+# Note there is no ConfigMap of NEXT_PUBLIC_* values here, and that is not an
+# omission: those are inlined into the client bundle at build time, so they are
+# build arguments in the image, not runtime environment. Changing one means
+# rebuilding the image. See agroapp/Dockerfile.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agroapp
+  namespace: agrosmart
+  labels:
+    app.kubernetes.io/name: agroapp
+    app.kubernetes.io/part-of: agrosmart
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: agroapp
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: agroapp
+        app.kubernetes.io/part-of: agrosmart
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: agroapp
+          image: ghcr.io/carrington-115/agroapp:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+            - name: HOSTNAME
+              value: "0.0.0.0"
+          livenessProbe:
+            httpGet:
+              # `/` redirects unauthenticated traffic to /auth via proxy.ts. A 3xx
+              # is a healthy answer — the server is serving. Probes only fail on
+              # 5xx, so this is correct rather than merely convenient.
+              path: /
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 768Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            # Next writes its image-optimisation cache under .next/cache at
+            # runtime, which a read-only root filesystem forbids. emptyDir keeps
+            # the filesystem locked down without breaking image optimisation.
+            - name: next-cache
+              mountPath: /app/.next/cache
+      volumes:
+        - name: next-cache
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agroapp
+  namespace: agrosmart
+spec:
+  selector:
+    app.kubernetes.io/name: agroapp
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: agroapp
+  namespace: agrosmart
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: agroapp

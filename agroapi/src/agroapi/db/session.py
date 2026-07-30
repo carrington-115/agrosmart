@@ -20,8 +20,9 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import NewType
 
-from asyncpg import Record
-from asyncpg.pool import Pool, PoolConnectionProxy
+from asyncpg.pool import PoolConnectionProxy
+
+from agroapi.db.types import DbPool
 
 #: What `pool.acquire()` actually hands back — a proxy, not a bare Connection.
 #: NewType requires a subscriptable class, so the Record parameter is supplied by
@@ -69,7 +70,7 @@ _SERVICE_SQL = "select set_config('role', 'service_role', true)"
 
 
 @asynccontextmanager
-async def user_scope(pool: Pool[Record], user_id: str) -> AsyncIterator[UserConn]:
+async def user_scope(pool: DbPool, user_id: str) -> AsyncIterator[UserConn]:
     """Yield a connection on which `auth.uid()` returns `user_id`.
 
     The enclosing transaction is REQUIRED, not stylistic. asyncpg autocommits
@@ -93,7 +94,7 @@ async def user_scope(pool: Pool[Record], user_id: str) -> AsyncIterator[UserConn
 
 
 @asynccontextmanager
-async def service_scope(pool: Pool[Record]) -> AsyncIterator[ServiceConn]:
+async def service_scope(pool: DbPool) -> AsyncIterator[ServiceConn]:
     """Yield a connection that bypasses RLS.
 
     Every query made through this MUST carry its own ownership predicate. There

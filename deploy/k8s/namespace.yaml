@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agrosmart
+  labels:
+    app.kubernetes.io/part-of: agrosmart
+    # Enforce the restricted Pod Security Standard at admission. Both images
+    # already run non-root with no privilege escalation, so this codifies what is
+    # true rather than demanding new work — and stops a future manifest from
+    # quietly regressing it.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest

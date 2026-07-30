@@ -1,0 +1,180 @@
+# Backend: device ingest + dashboard read API.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agroapi-config
+  namespace: agrosmart
+data:
+  AGRO_SUPABASE_URL: "https://REPLACE_ME.supabase.co"
+  AGRO_CORS_ORIGINS: "https://agrosmart.example"
+  # Three times the firmware's SAMPLE_INTERVAL_MS (60 s), so a single missed
+  # transmission does not mark a healthy node offline.
+  AGRO_OFFLINE_AFTER_SECONDS: "180"
+  # Bounds a store-and-forward replay to four requests after a six-hour outage.
+  AGRO_MAX_BATCH_SIZE: "100"
+  # Kept well below Postgres' connection limit: this multiplies by replica count,
+  # and the HPA below can take that to 6.
+  AGRO_DB_POOL_MAX_SIZE: "10"
+---
+# Template only. Do NOT commit real values — create it out of band:
+#
+#   kubectl -n agrosmart create secret generic agroapi-secrets \
+#     --from-literal=AGRO_DATABASE_URL='postgresql://agro_api:...@db.<ref>.supabase.co:5432/postgres' \
+#     --from-literal=AGRO_TOKEN_PEPPER="$(openssl rand -hex 32)"
+#
+# Note the user: agro_api, never postgres. See agroapp/supabase/setup_api_role.sql
+# — postgres owns these tables and holds BYPASSRLS, which would make every RLS
+# policy inert.
+#
+# Rotating AGRO_TOKEN_PEPPER invalidates every device token, since the stored
+# hashes are keyed by it. That means reflashing every node, so treat it as a
+# break-glass action rather than routine hygiene.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: agroapi-secrets
+  namespace: agrosmart
+  annotations:
+    agrosmart.dev/managed-out-of-band: "true"
+type: Opaque
+stringData:
+  AGRO_DATABASE_URL: "REPLACE_ME"
+  AGRO_TOKEN_PEPPER: "REPLACE_ME"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agroapi
+  namespace: agrosmart
+  labels:
+    app.kubernetes.io/name: agroapi
+    app.kubernetes.io/part-of: agrosmart
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: agroapi
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # Devices retry, but a gap in ingest still means buffered readings on
+      # flash. Never drop below the current replica count mid-roll.
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: agroapi
+        app.kubernetes.io/part-of: agrosmart
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: agroapi
+          # Pin by digest in production. A mutable tag makes a rollback
+          # unreproducible, which is exactly when reproducibility matters.
+          image: ghcr.io/carrington-115/agroapi:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: agroapi-config
+            - secretRef:
+                name: agroapi-secrets
+          # Liveness touches nothing external, so a Supabase outage cannot
+          # restart every pod and add a reconnect storm to an existing problem.
+          livenessProbe:
+            httpGet:
+              path: /v1/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # Readiness DOES check the database, the JWKS endpoint and the schema
+          # write contract. Failing it removes the pod from the Service without
+          # restarting it — the right response to a dependency being down.
+          readinessProbe:
+            httpGet:
+              path: /v1/health/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /v1/health
+              port: http
+            periodSeconds: 3
+            failureThreshold: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              # No CPU limit on purpose: CFS throttling on an asyncio service
+              # shows up as latency spikes that look like database slowness and
+              # are miserable to diagnose. The request handles scheduling; the
+              # HPA handles load.
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agroapi
+  namespace: agrosmart
+spec:
+  selector:
+    app.kubernetes.io/name: agroapi
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: agroapi
+  namespace: agrosmart
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: agroapi
+  minReplicas: 2
+  # Bounded deliberately: every replica opens up to AGRO_DB_POOL_MAX_SIZE
+  # connections, so 6 x 10 = 60 is the real constraint being respected here, not
+  # CPU headroom.
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: agroapi
+  namespace: agrosmart
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: agroapi

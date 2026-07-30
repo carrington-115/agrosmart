@@ -1,0 +1,77 @@
+# Local development and integration testing.
+#
+#   docker compose up                      dashboard + backend against Supabase
+#   docker compose --profile test up -d db  a throwaway Postgres for pytest
+#
+# Production runs from deploy/k8s/. This file exists so a contributor can bring
+# the whole stack up without installing Python, pnpm and a database first.
+
+name: agrosmart
+
+services:
+  agroapi:
+    build:
+      context: ./agroapi
+    ports:
+      # 8080 matches AGRO_INGEST_URL in agrosensor/include/config.h, so a device
+      # on the same LAN can POST here with no firmware change.
+      - "8080:8080"
+    environment:
+      # Read from the shell or a root .env — deliberately not defaulted, so a
+      # missing value fails at startup with a name rather than silently
+      # connecting somewhere unintended.
+      AGRO_DATABASE_URL: ${AGRO_DATABASE_URL:?set AGRO_DATABASE_URL}
+      AGRO_SUPABASE_URL: ${AGRO_SUPABASE_URL:?set AGRO_SUPABASE_URL}
+      AGRO_TOKEN_PEPPER: ${AGRO_TOKEN_PEPPER:?generate with openssl rand -hex 32}
+      AGRO_CORS_ORIGINS: http://localhost:3000
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import urllib.request,sys
+          sys.exit(0 if urllib.request.urlopen("http://127.0.0.1:8080/v1/health",timeout=2).status==200 else 1)
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  agroapp:
+    build:
+      context: ./agroapp
+      args:
+        # NEXT_PUBLIC_* are inlined into the client bundle at build time, so they
+        # belong here rather than under `environment` — setting them at runtime
+        # would have no effect.
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?set NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:?set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8080/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      agroapi:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Integration-test database. Behind a profile so `up` does not start it: the
+  # real schema lives in Supabase, and this exists only so `pytest -m integration`
+  # can run against something disposable.
+  db:
+    profiles: [test]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: agrosmart_test
+    ports:
+      - "55432:5432"
+    # tmpfs, not a volume: this database is meant to be thrown away, and never
+    # persisting it removes the temptation to treat it as a source of truth.
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agrosmart_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 10

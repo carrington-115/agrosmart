@@ -34,7 +34,17 @@ class Settings(BaseSettings):
     database_url: SecretStr = Field(
         description="postgresql://agro_api:...@db.<ref>.supabase.co:5432/postgres"
     )
-    db_pool_min_size: int = 2
+    #: Zero on purpose. `create_pool()` eagerly opens `min_size` connections while
+    #: the app is starting, so any non-zero value makes an unreachable database a
+    #: STARTUP failure — and in Kubernetes that is a crash-loop during a
+    #: transient Supabase blip, precisely the behaviour the split between
+    #: /health and /health/ready exists to avoid.
+    #:
+    #: With 0, the process always starts, connects on first use, and reports
+    #: itself *unready* while the database is down. Traffic is withheld by the
+    #: readiness probe instead of by the pod dying. The cost is a cold first
+    #: connection, which the readiness probe pays before any user does.
+    db_pool_min_size: int = 0
     db_pool_max_size: int = 10
 
     # Set to 0 only when forced onto Supavisor transaction mode (:6543), where
@@ -45,6 +55,11 @@ class Settings(BaseSettings):
     # --- auth ---------------------------------------------------------------
 
     supabase_url: str = Field(description="https://<ref>.supabase.co")
+
+    #: Origins allowed to call the read API. The dashboard runs on a different
+    #: origin, so it needs CORS; devices do not, being no kind of browser.
+    #: Comma-separated in the environment: AGRO_CORS_ORIGINS=https://a,https://b
+    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
 
     # Pepper for device-token HMACs. Keeps a leaked database dump from yielding
     # usable tokens. Generate with: openssl rand -hex 32

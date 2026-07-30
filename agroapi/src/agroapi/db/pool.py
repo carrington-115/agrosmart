@@ -5,13 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import asyncpg
-from asyncpg import Connection, Record
-from asyncpg.pool import Pool
 
 from agroapi.config import Settings
+from agroapi.db.types import AnyConn, DbPool
 
 
-async def open_pool(settings: Settings) -> Pool[Record]:
+async def open_pool(settings: Settings) -> DbPool:
     return await asyncpg.create_pool(
         dsn=settings.database_url.get_secret_value(),
         min_size=settings.db_pool_min_size,
@@ -84,7 +83,7 @@ def check_schema(
     return violations
 
 
-async def observed_columns(conn: Connection[Record]) -> dict[str, set[str]]:
+async def observed_columns(conn: AnyConn) -> dict[str, set[str]]:
     rows = await conn.fetch(
         """
         select table_name, column_name

@@ -1,0 +1,99 @@
+# Public routing.
+#
+# Two hostnames rather than one host with a /v1 path prefix, because the two
+# audiences are genuinely different: browsers carrying a Supabase JWT, and field
+# devices carrying a per-device token. Separate hosts mean rate limits, request
+# body sizes and TLS policy can differ without a shared prefix rule to reason
+# about.
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: agroapp
+  namespace: agrosmart
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [agrosmart.example]
+      secretName: agroapp-tls
+  rules:
+    - host: agrosmart.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: agroapp
+                port:
+                  name: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: agroapi
+  namespace: agrosmart
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # A full telemetry envelope is ~400 B and the largest accepted batch is 100
+    # of them. 256k is generous; the point is that an unbounded body on an
+    # endpoint reachable by anything holding a device token is not acceptable.
+    nginx.ingress.kubernetes.io/proxy-body-size: 256k
+    # Headroom over the firmware's 60 s cadence without letting a stalled TLS
+    # handshake hold a worker indefinitely — BearSSL on an ESP8266 is slow.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [api.agrosmart.example]
+      secretName: agroapi-tls
+  rules:
+    - host: api.agrosmart.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: agroapi
+                port:
+                  name: http
+---
+# Default-deny ingress for the namespace, then open only what is needed. Without
+# this, any compromised pod anywhere in the cluster can reach the backend
+# directly and skip the token check at the edge.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: agrosmart
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ingress-controller
+  namespace: agrosmart
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app.kubernetes.io/name
+        operator: In
+        values: [agroapi, agroapp]
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 3000

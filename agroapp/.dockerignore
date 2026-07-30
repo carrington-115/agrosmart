@@ -1,0 +1,22 @@
+# node_modules is reinstalled inside the image from the lockfile — copying the
+# host's would drag in platform-specific binaries built for Windows.
+node_modules/
+.next/
+out/
+build/
+coverage/
+
+.git/
+.gitignore
+
+# Secrets. NEXT_PUBLIC_* values are baked at build time and must be passed
+# explicitly as build args, never by copying an env file in.
+.env
+.env.*
+
+Dockerfile
+.dockerignore
+
+# The backend's migrations are applied by the Supabase CLI, not by the frontend
+# image.
+supabase/
