@@ -37,7 +37,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # `package_json_file` must be given explicitly. Action inputs are resolved
+      # from the repository root and are NOT affected by defaults.working-directory,
+      # so without this the action looks for /package.json, finds nothing, and
+      # fails with "No pnpm version is specified" — which reads like a missing
+      # input rather than a missing file.
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: agroapp/package.json
 
       - uses: actions/setup-node@v4
         with:
@@ -102,9 +109,34 @@ jobs:
         with:
           context: agroapp
           push: false
+          load: true
+          tags: agroapp:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
             NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co
             NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ci_placeholder
             NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/v1
+
+      # A standalone Next build can succeed and still fail to serve — the runtime
+      # stage copies .next/standalone by hand, so a missing server.js or an
+      # unwritable .next/cache only shows up on boot.
+      - name: Smoke test the image
+        run: |
+          docker run -d --name smoke -p 3000:3000 agroapp:ci
+          for i in $(seq 1 30); do
+            if curl -fsS -o /dev/null http://127.0.0.1:3000/auth 2>/dev/null; then
+              echo "serving after ${i}s"; break
+            fi
+            sleep 1
+          done
+
+          # /auth is the one page reachable without a session.
+          curl -fsS -o /dev/null -w 'auth: %{http_code}\n' http://127.0.0.1:3000/auth
+
+          # / must redirect an unauthenticated visitor to /auth. A 307 here proves
+          # proxy.ts is actually running in the image, which a 200 would not.
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/)
+          test "$code" = "307" || { echo "expected 307 from /, got $code"; exit 1; }
+
+          test "$(docker exec smoke id -u)" = "10001" || { echo "not running as uid 10001"; exit 1; }

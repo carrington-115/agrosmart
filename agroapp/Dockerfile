@@ -6,6 +6,10 @@
 # ---------------------------------------------------------------- deps
 FROM node:22-alpine AS deps
 
+# COREPACK_ENABLE_DOWNLOAD_PROMPT=0 because corepack otherwise prompts before
+# fetching the pnpm version pinned in package.json's `packageManager`, and a
+# prompt in a non-interactive build just hangs or fails.
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable
 WORKDIR /app
 
@@ -19,6 +23,10 @@ RUN --mount=type=cache,target=/pnpm/store \
 # ---------------------------------------------------------------- build
 FROM node:22-alpine AS builder
 
+# COREPACK_ENABLE_DOWNLOAD_PROMPT=0 because corepack otherwise prompts before
+# fetching the pnpm version pinned in package.json's `packageManager`, and a
+# prompt in a non-interactive build just hangs or fails.
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 RUN corepack enable
 WORKDIR /app
 
