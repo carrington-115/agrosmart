@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """FastAPI dependency wiring.
 
 Deliberately thin. Everything here resolves a request into either a scoped

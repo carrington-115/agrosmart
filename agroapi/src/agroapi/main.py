@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Composition root.
 
 Owns wiring and lifecycle, nothing else — the same division `agrosensor`'s

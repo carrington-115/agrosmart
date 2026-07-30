@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Runtime configuration.
 
 Settings are validated at import time and the process refuses to start on a

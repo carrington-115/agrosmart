@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Typed failures.
 
 Borrowed from the firmware's rule that "failure is a typed enum, never a magic

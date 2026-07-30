@@ -152,6 +152,34 @@ unrelated change.
 - TypeScript is `strict`. Python is `mypy --strict`. Neither gets loosened to
   make something compile.
 
+## Licensing
+
+Code is MIT (`LICENSE`); prose is CC BY 4.0 (`LICENSE-docs`). The split matches
+`../agrosensor`, whose documentation — the telemetry contract especially — is
+worth citing independently of any implementation.
+
+New source files carry an SPDX header as the first line, matching the firmware
+repo's convention: `# SPDX-License-Identifier: MIT` for Python,
+`-- SPDX-License-Identifier: MIT` for SQL.
+
+## CI
+
+| Workflow | Gates |
+|---|---|
+| `agroapi.yml` | ruff, `ruff format --check`, `mypy --strict`, pure pytest → then integration tests and a Docker build with an image smoke test |
+| `agroapp.yml` | lint (**advisory**, 7 pre-existing errors), `tsc --noEmit`, `pnpm build`, Docker build |
+| `code-review.yml` | Automated PR review. Needs `ANTHROPIC_API_KEY`. |
+| `publish-images.yml` | Pushes both images to GHCR on `master` and version tags |
+
+Both CI workflows are path-filtered, so a frontend change does not run backend
+checks. The pure backend suite runs first because it is fast and covers the
+decoding most likely to be wrong — the same ordering `../agrosensor` uses.
+
+The image job does not just build; it runs the container and asserts liveness
+returns 200, readiness returns 503 without a database, and the process runs as
+uid 10001. A build succeeding proves less than you would hope: the first draft of
+the Dockerfile built perfectly and failed on exec.
+
 ## MCP servers
 
 Configured in `.mcp.json`:

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Per-device credentials.
 
 Replaces the single global SENSOR_INGEST_KEY the Next.js route used. One shared

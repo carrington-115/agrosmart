@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Connection scoping. The security-critical module.
 
 Dashboard queries run with the existing RLS policies from 0001_init.sql doing the

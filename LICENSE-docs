@@ -1,0 +1,23 @@
+Creative Commons Attribution 4.0 International (CC BY 4.0)
+
+Copyright (c) 2026 AgroSmart contributors
+
+The documentation in this repository is licensed under the Creative Commons
+Attribution 4.0 International License.
+
+  Human-readable summary:  https://creativecommons.org/licenses/by/4.0/
+  Full legal code:         https://creativecommons.org/licenses/by/4.0/legalcode
+
+You are free to share and adapt this material for any purpose, including
+commercially, provided you give appropriate credit, link to the licence, and
+indicate if changes were made.
+
+This covers the prose: CLAUDE.md, deploy/README.md, agroapp/README.md, and any
+other Markdown in the tree. Source code is MIT; see LICENSE.
+
+The split matches the sibling firmware repository (../agrosensor), which
+licenses its code MIT and its hardware and integration documentation CC BY 4.0.
+The documentation is the more broadly useful artefact -- the telemetry contract
+and the wiring notes are worth citing and adapting independently of this
+implementation -- and a share-friendly licence with an attribution requirement
+serves that better than MIT does for prose.

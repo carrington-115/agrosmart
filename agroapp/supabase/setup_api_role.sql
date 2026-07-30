@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: MIT
 -- Creates the least-privilege login role the FastAPI backend connects as.
 --
 -- NOT a numbered migration, for two reasons: it contains a password, and it is

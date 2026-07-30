@@ -1,0 +1,110 @@
+# SPDX-License-Identifier: MIT
+#
+# Dashboard CI.
+#
+# There is no test job because there is no test framework in agroapp yet. Rather
+# than a green tick that means nothing, the gate is what actually exists: lint,
+# a strict typecheck, and a real production build. Add the test job with the
+# framework, not before.
+
+name: agroapp
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "agroapp/**"
+      - ".github/workflows/agroapp.yml"
+  pull_request:
+    paths:
+      - "agroapp/**"
+      - ".github/workflows/agroapp.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: agroapp-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: agroapp
+
+jobs:
+  check:
+    name: Lint, types, build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: agroapp/pnpm-lock.yaml
+
+      # --frozen-lockfile makes a drifted lockfile a failure here rather than a
+      # surprise inside the Docker build, which installs the same way.
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Advisory, not gating — the same treatment ../agrosensor gives `pio check`.
+      # There are 7 pre-existing errors and gating on them would make this
+      # workflow red on the commit that introduces it, which teaches everyone to
+      # ignore it:
+      #
+      #   components/ui/sidebar.tsx:611   impure function called during render
+      #                                   (shadcn-generated; needs upstream fix)
+      #   components/web/ChatElement.tsx:60          no-explicit-any
+      #   components/web/page-headers/SettingsHeader.tsx:26  react/display-name
+      #   lib/types.ts:89,96,115,116                 no-explicit-any
+      #
+      # The four in lib/types.ts are the chatbot placeholder types and will go
+      # when that surface is typed properly. Flip this to gating once the list is
+      # empty — an advisory check that stays advisory forever is just noise.
+      - name: Lint
+        continue-on-error: true
+        run: pnpm lint
+
+      # There is no `typecheck` script in package.json; `next build` does typecheck,
+      # but running tsc separately means a type error is reported as a type error
+      # instead of as a build failure fifty lines into bundler output.
+      - name: Types
+        run: npx tsc --noEmit
+
+      # NEXT_PUBLIC_* are inlined into the client bundle at build time, so the
+      # build needs them present. These are deliberately fake: the build must not
+      # depend on reaching a real Supabase project, and nothing here is a secret
+      # by definition — the publishable key ships to every browser.
+      #
+      # SUPABASE_SERVICE_ROLE_KEY is absent on purpose. It bypasses RLS, and a
+      # build that needed it would be a build that could leak it into a bundle.
+      - name: Build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:8080/v1
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: pnpm build
+
+  image:
+    name: Docker build
+    runs-on: ubuntu-latest
+    needs: check
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: agroapp
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co
+            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ci_placeholder
+            NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/v1

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Liveness and readiness.
 
 Split because they answer different questions and Kubernetes treats them

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Sensor status derivation. PURE.
 
 This closes mismatch #7 from the telemetry contract: status must be

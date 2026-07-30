@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Envelope -> row mapping. No database, no network, no clock of its own.
 
 These are the tests that matter most in this service. Protocol mapping is where
@@ -175,9 +176,7 @@ def test_future_ts_beyond_skew_tolerance_is_rejected() -> None:
 def test_ts_within_skew_tolerance_is_accepted() -> None:
     """A device clock a minute fast is normal, not an error."""
     slightly_ahead = int((NOW + timedelta(seconds=60)).timestamp())
-    result = to_reading(
-        load("full.json").model_copy(update={"ts": slightly_ahead}), NOW, V1
-    )
+    result = to_reading(load("full.json").model_copy(update={"ts": slightly_ahead}), NOW, V1)
 
     assert isinstance(result, ReadingInsert)
     assert result.recorded_at_source == "device"

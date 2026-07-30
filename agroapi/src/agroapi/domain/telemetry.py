@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Firmware envelope -> database row.
 
 PURE. No connection, no FastAPI, no clock of its own — `now` is passed in. This

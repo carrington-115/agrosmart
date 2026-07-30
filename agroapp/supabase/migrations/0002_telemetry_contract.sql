@@ -1,3 +1,4 @@
+-- SPDX-License-Identifier: MIT
 -- AgroSmart 0002 — bring the schema up to firmware wire contract v1.
 --
 -- 0001 was designed against lib/types.ts, which predates the firmware. The

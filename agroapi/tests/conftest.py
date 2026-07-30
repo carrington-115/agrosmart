@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Test-wide setup.
 
 `Settings` deliberately refuses to start without its required variables, which is

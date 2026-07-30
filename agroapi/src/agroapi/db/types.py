@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Runtime-safe aliases for asyncpg's generic types.
 
 `asyncpg.pool.Pool` and `asyncpg.Connection` are NOT subscriptable at runtime —

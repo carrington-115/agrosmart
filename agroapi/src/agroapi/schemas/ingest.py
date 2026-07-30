@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """The device wire contract, v1.
 
 Mirrors agrosensor/lib/Telemetry/Payload.cpp exactly. Authoritative spec:

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Connection pool lifecycle and the schema write-contract check."""
 
 from __future__ import annotations
@@ -36,19 +37,41 @@ class SchemaViolation:
 _WRITE_CONTRACT: dict[str, frozenset[str]] = {
     "sensor_readings": frozenset(
         {
-            "sensor_id", "recorded_at", "received_at", "recorded_at_source",
-            "reading_uid", "payload_version", "raw",
-            "temperature", "moisture", "salinity", "ph_soil", "ph_water",
-            "water_temperature", "sunlight", "water_level",
-            "nitrogen", "phosphorus", "potassium",
-            "npk_estimated", "stabilising", "soil_dry",
+            "sensor_id",
+            "recorded_at",
+            "received_at",
+            "recorded_at_source",
+            "reading_uid",
+            "payload_version",
+            "raw",
+            "temperature",
+            "moisture",
+            "salinity",
+            "ph_soil",
+            "ph_water",
+            "water_temperature",
+            "sunlight",
+            "water_level",
+            "nitrogen",
+            "phosphorus",
+            "potassium",
+            "npk_estimated",
+            "stabilising",
+            "soil_dry",
         }
     ),
     "sensors": frozenset(
         {
-            "id", "owner_id", "sensor_code", "sensor_tag", "status",
-            "last_seen_at", "last_reading_at", "last_rssi",
-            "last_uptime_seconds", "firmware_version",
+            "id",
+            "owner_id",
+            "sensor_code",
+            "sensor_tag",
+            "status",
+            "last_seen_at",
+            "last_reading_at",
+            "last_rssi",
+            "last_uptime_seconds",
+            "firmware_version",
         }
     ),
     "device_tokens": frozenset(

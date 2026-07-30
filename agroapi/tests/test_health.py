@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Health endpoints, over a real ASGI transport.
 
 Route registration is asserted by calling the endpoint rather than by inspecting

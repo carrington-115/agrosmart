@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """Supabase access-token verification.
 
 No second identity system: the dashboard keeps its existing Supabase

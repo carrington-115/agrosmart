@@ -1,0 +1,212 @@
+# SPDX-License-Identifier: MIT
+#
+# Backend CI.
+#
+# Ordered fastest-and-most-valuable first, mirroring ../agrosensor's CI: the pure
+# suite needs no database, runs in about a second, and covers the envelope
+# decoding where this service is most likely to be wrong. Everything slower runs
+# only once that passes.
+
+name: agroapi
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "agroapi/**"
+      - ".github/workflows/agroapi.yml"
+  pull_request:
+    paths:
+      - "agroapi/**"
+      - ".github/workflows/agroapi.yml"
+  workflow_dispatch:
+
+# A new push makes the previous run's answer irrelevant.
+concurrency:
+  group: agroapi-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: agroapi
+
+jobs:
+  check:
+    name: Lint, types, pure tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: agroapi/uv.lock
+
+      # --frozen so a lockfile that has drifted from pyproject.toml is a build
+      # failure rather than a silent re-resolution that passes here and installs
+      # something else in the image.
+      - name: Install
+        run: uv sync --frozen --all-extras
+
+      - name: Lint
+        run: uv run ruff check
+
+      - name: Format check
+        run: uv run ruff format --check
+
+      # Strict, and not negotiable: db/session.py uses NewType over the
+      # connection precisely so a service connection cannot reach a user-scoped
+      # query. Without strict mode that distinction is decoration.
+      - name: Types
+        run: uv run mypy
+
+      # No database, no network, no secrets — conftest.py supplies obviously fake
+      # configuration. This is what lets CI gate on the suite for a fork PR.
+      - name: Pure tests
+        run: uv run pytest -m "not integration" -v
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    needs: check
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: agrosmart_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: agroapi/uv.lock
+
+      - name: Install
+        run: uv sync --frozen --all-extras
+
+      # The migrations live in the frontend workspace because the Supabase CLI is
+      # the only applier — see CLAUDE.md. Applied here with psql because this
+      # database is disposable and the CLI would want a linked project.
+      #
+      # 0001 references auth.users, which only exists on a real Supabase
+      # instance, so the schemas and the role are stubbed first. If this stub
+      # drifts from what Supabase actually provides, the integration suite is
+      # testing a fiction — worth remembering when a test passes here and fails
+      # against staging.
+      - name: Apply migrations
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d agrosmart_test -v ON_ERROR_STOP=1 <<'SQL'
+          create schema if not exists auth;
+          create table if not exists auth.users (
+            id uuid primary key default gen_random_uuid(),
+            email text,
+            raw_user_meta_data jsonb default '{}'::jsonb,
+            created_at timestamptz not null default now()
+          );
+          create or replace function auth.uid() returns uuid
+          language sql stable as $$
+            select coalesce(
+              nullif(current_setting('request.jwt.claim.sub', true), ''),
+              (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')
+            )::uuid
+          $$;
+          do $$ begin
+            if not exists (select 1 from pg_roles where rolname = 'authenticated') then
+              create role authenticated;
+            end if;
+            if not exists (select 1 from pg_roles where rolname = 'service_role') then
+              create role service_role;
+            end if;
+          end $$;
+          SQL
+          for f in ../agroapp/supabase/migrations/*.sql; do
+            echo "applying $f"
+            psql -h localhost -U postgres -d agrosmart_test -v ON_ERROR_STOP=1 -f "$f"
+          done
+
+      # pytest exits 5 when every collected test is deselected, which is the
+      # situation today: the marker exists and no test carries it yet. Exit 5 is
+      # tolerated so the job is honest rather than red for being empty — but ONLY
+      # exit 5. A genuine failure (1) still fails the build.
+      #
+      # Delete this tolerance as soon as the first integration test lands; an
+      # accidentally-empty suite passing silently is worse than an empty one
+      # being obvious.
+      - name: Integration tests
+        env:
+          AGRO_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/agrosmart_test
+          AGRO_SUPABASE_URL: https://example.supabase.co
+          AGRO_TOKEN_PEPPER: ci-pepper-not-a-secret
+        run: |
+          set +e
+          uv run pytest -m integration -v
+          code=$?
+          set -e
+          if [ "$code" = "5" ]; then
+            echo "::warning::No integration tests are marked yet. Passing on exit 5."
+            exit 0
+          fi
+          exit "$code"
+
+  image:
+    name: Docker build
+    runs-on: ubuntu-latest
+    needs: check
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      # Build only, no push: a PR from a fork must never get registry
+      # credentials. Publishing is publish-images.yml, on master.
+      - uses: docker/build-push-action@v6
+        with:
+          context: agroapi
+          push: false
+          load: true
+          tags: agroapi:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Catches what a successful build does not: a broken entry point. The venv
+      # shebang bug that shipped in this Dockerfile's first draft built perfectly
+      # and failed only on exec.
+      - name: Smoke test the image
+        run: |
+          docker run -d --name smoke -p 8080:8080 \
+            -e AGRO_DATABASE_URL='postgresql://agro_api:x@127.0.0.1:5432/postgres' \
+            -e AGRO_SUPABASE_URL='https://example.supabase.co' \
+            -e AGRO_TOKEN_PEPPER='ci-pepper' \
+            agroapi:ci
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8080/v1/health >/dev/null 2>&1; then
+              echo "liveness ok after ${i}s"; break
+            fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8080/v1/health | tee /dev/stderr | grep -q '"status":"ok"'
+
+          # Readiness MUST fail here, and that is the assertion: there is no
+          # database. A pod that reports ready without one would take traffic it
+          # cannot serve.
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/v1/health/ready)
+          test "$code" = "503" || { echo "expected 503 from readiness, got $code"; exit 1; }
+
+          # The container must still be alive. Liveness depends on nothing
+          # external precisely so a database outage cannot restart it.
+          test "$(docker inspect -f '{{.State.Running}}' smoke)" = "true"
+
+          test "$(docker exec smoke id -u)" = "10001" || { echo "not running as uid 10001"; exit 1; }

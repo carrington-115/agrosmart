@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """The safe bands. Single source of truth.
 
 These currently exist TWICE in the frontend — in `deriveStatus()` in
