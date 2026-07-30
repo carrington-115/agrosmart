@@ -38,6 +38,40 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # Fail fast and say what is missing. Without this the agroapp build gets
+      # empty NEXT_PUBLIC_* args and dies inside `pnpm build` with
+      # "@supabase/ssr: Your project's URL and API key are required", which names
+      # neither the workflow nor the variable you actually have to set.
+      #
+      # Deliberately NOT defaulted to placeholders: a published image with
+      # placeholder Supabase config is worse than no image, because it looks
+      # deployable and fails only in front of a user.
+      - name: Require build configuration
+        if: matrix.name == 'agroapp'
+        env:
+          URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+          API: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+        run: |
+          missing=""
+          [ -n "$URL" ] || missing="$missing NEXT_PUBLIC_SUPABASE_URL"
+          [ -n "$KEY" ] || missing="$missing NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+          [ -n "$API" ] || missing="$missing NEXT_PUBLIC_API_BASE_URL"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository variables:$missing"
+            echo "These are inlined into the client bundle at build time, so the"
+            echo "image cannot be built without them. They are configuration, not"
+            echo "secrets — the publishable key already ships to every browser."
+            echo
+            echo "Set them under Settings -> Secrets and variables -> Actions ->"
+            echo "Variables, or with the CLI:"
+            echo "  gh variable set NEXT_PUBLIC_SUPABASE_URL --body 'https://<ref>.supabase.co'"
+            echo "  gh variable set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY --body 'sb_publishable_...'"
+            echo "  gh variable set NEXT_PUBLIC_API_BASE_URL --body 'https://api.<host>/v1'"
+            exit 1
+          fi
+
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/login-action@v3

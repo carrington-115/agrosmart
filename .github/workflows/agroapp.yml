@@ -75,12 +75,6 @@ jobs:
         continue-on-error: true
         run: pnpm lint
 
-      # There is no `typecheck` script in package.json; `next build` does typecheck,
-      # but running tsc separately means a type error is reported as a type error
-      # instead of as a build failure fifty lines into bundler output.
-      - name: Types
-        run: npx tsc --noEmit
-
       # NEXT_PUBLIC_* are inlined into the client bundle at build time, so the
       # build needs them present. These are deliberately fake: the build must not
       # depend on reaching a real Supabase project, and nothing here is a secret
@@ -95,6 +89,19 @@ jobs:
           NEXT_PUBLIC_API_BASE_URL: http://localhost:8080/v1
           NEXT_TELEMETRY_DISABLED: "1"
         run: pnpm build
+
+      # AFTER the build, and that ordering is required rather than incidental.
+      #
+      # `next-env.d.ts` is what pulls in next/image-types/global, which declares
+      # the `*.svg` / `*.png` module types that eight files import. It is generated
+      # by `next build` and is gitignored, so on a clean checkout it does not
+      # exist — running tsc first fails with eight TS2307s that reproduce nowhere
+      # locally, because locally it was generated long ago and never removed.
+      #
+      # `next build` typechecks too, so this is not redundant coverage: it reports
+      # a type error as a type error, and it covers files the bundler never reaches.
+      - name: Types
+        run: npx tsc --noEmit
 
   image:
     name: Docker build
