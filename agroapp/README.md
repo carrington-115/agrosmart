@@ -1,10 +1,12 @@
-# AgroSmart
+# AgroSmart dashboard
 
-AgroSmart helps farmers optimize their agricultural practices using precision
-agriculture techniques, analysing data from soil sensors to surface insights and
+The web dashboard: analyses soil sensor data and surfaces insights and
 recommendations for crop management.
 
 Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · shadcn/ui · Supabase
+
+This is one component of the project. See the [root README](../README.md) for the
+system as a whole, and [`../CLAUDE.md`](../CLAUDE.md) for the engineering rules.
 
 ## Getting started
 
@@ -44,7 +46,13 @@ pnpm dlx supabase gen types typescript --linked > lib/database.types.ts
 
 ## Architecture
 
-Auth and data both go through Supabase; there is no separate backend service.
+Auth and data currently both go through Supabase from this app directly.
+
+> **Migrating.** `../agroapi` (FastAPI) is taking over device ingest and the
+> dashboard read API. Once its routers land, `lib/queries.ts` calls it over HTTP,
+> the route handlers below are deleted, and `lib/supabase/admin.ts` goes with them
+> so the service-role key leaves this app's environment entirely. Supabase Auth
+> and `proxy.ts` stay exactly as they are.
 
 - `proxy.ts` — root Next.js 16 proxy (formerly `middleware.ts`). Refreshes the
   Supabase session and redirects unauthenticated users to `/auth`. Excludes `/api`.
@@ -94,6 +102,10 @@ Posting a reading also recomputes the sensor's `status` from its thresholds.
   (mandi prices, expected yield, carbon sequestration, harvest window) need external
   data sources that are not connected, so they are omitted rather than mocked.
 - **`/dashboard/reports/recommendations` is a stub.**
-- **Firmware.** `../../agrosensor` (ESP8266/PlatformIO) has no source yet, so
-  `/api/ingest` currently has no real client.
-- **No tests.** No test framework is configured.
+- **`/api/ingest` has no real client, and cannot accept one.** The firmware
+  (`../../agrosensor`) is complete through Phase E with 109 host-side tests, but it
+  sends a nested, versioned envelope with two distinct pH readings, a quality
+  block and diagnostics — not the flat payload this route expects. Its Phase F
+  (network delivery) is waiting on `../agroapi`'s `/v1/ingest`, which speaks the
+  real contract.
+- **No tests.** No test framework is configured for this app.
