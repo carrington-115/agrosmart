@@ -118,7 +118,7 @@ export default function AppSidebar() {
                       <item.icon
                         fill={
                           pathname === item.url
-                            ? "var(--primary-foreground"
+                            ? "var(--primary-foreground)"
                             : "none"
                         }
                         className={twMerge(!sidebarOpen && "!size-5")}
@@ -150,7 +150,7 @@ export default function AppSidebar() {
                       <item.icon
                         fill={
                           pathname === item.url
-                            ? "var(--primary-foreground"
+                            ? "var(--primary-foreground)"
                             : "none"
                         }
                         className={twMerge(

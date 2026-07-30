@@ -1,9 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import { dataAnalysisContent } from "@/app/dashboard/page";
 import { AnalyticsCard } from "@/components/web";
+import { analyticsProps } from "@/lib/types";
 
-export default function Analytics() {
+export default function Analytics({ items }: { items: analyticsProps[] }) {
   return (
     <section className="max-w-[100%] mx-0 px-4 py-5 overflow-x-hidden">
       <div className="w-full flex flex-col gap-4">
@@ -17,7 +17,7 @@ export default function Analytics() {
           </Button>
         </div>
         <div className="w-full grid grid-cols-4 gap-5 justify-between">
-          {dataAnalysisContent.map((item) => (
+          {items.map((item) => (
             <AnalyticsCard key={item.title} {...item} />
           ))}
         </div>

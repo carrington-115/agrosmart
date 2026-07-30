@@ -44,7 +44,39 @@ export const farmProfileSchema = z.object({
   farmName: z.string().min(3).max(30),
 });
 
+/**
+ * `sensorId` is the code printed on the device. It was previously `.length(7)`,
+ * which no real identifier satisfied — every seeded sensor looks like
+ * `SENSOR-LKO-001` (14 chars) — so the form could never produce a usable value.
+ * Now accepts alphanumerics plus dashes/underscores at a realistic length.
+ */
 export const sensorSchema = z.object({
-  sensorId: z.string().length(7),
-  sensorTag: z.string().min(3).max(16),
+  sensorId: z
+    .string()
+    .trim()
+    .min(4, "Sensor ID must be at least 4 characters")
+    .max(32, "Sensor ID must be at most 32 characters")
+    .regex(
+      /^[A-Za-z0-9][A-Za-z0-9_-]*$/,
+      "Use letters, numbers, dashes or underscores only",
+    )
+    .transform((value) => value.toUpperCase()),
+  sensorTag: z.string().trim().min(3).max(16),
+});
+
+export const ingestReadingSchema = z.object({
+  sensorId: z.string().trim().min(1),
+  recordedAt: z.iso.datetime().optional(),
+  temperature: z.number().min(-50).max(100).optional(),
+  ph: z.number().min(0).max(14).optional(),
+  sunlight: z.number().min(0).optional(),
+  moisture: z.number().min(0).max(100).optional(),
+  salinity: z.number().min(0).optional(),
+  nitrogen: z.number().min(0).optional(),
+  phosphorus: z.number().min(0).optional(),
+  potassium: z.number().min(0).optional(),
+});
+
+export const alertStateSchema = z.object({
+  state: z.enum(["open", "accepted", "rejected"]),
 });

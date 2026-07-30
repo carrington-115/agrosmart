@@ -30,11 +30,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { sampleSensors as data } from "@/lib/table-data";
 import { columns } from "@/lib/table-columns";
-import { useRouter } from "next/navigation";
+import type { Sensor } from "@/lib/types";
 
-export function DataTableDemo() {
+export function DataTableDemo({ data }: { data: Sensor[] }) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
@@ -42,7 +41,6 @@ export function DataTableDemo() {
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
-  const router = useRouter();
 
   const table = useReactTable({
     data,

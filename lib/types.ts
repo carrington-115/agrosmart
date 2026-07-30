@@ -167,7 +167,15 @@ type npk = {
   potassium: number;
 };
 
+/** Identifiers carried alongside a row so actions can address the DB record. */
+type sensorActions = {
+  /** sensors.id — the UUID primary key, distinct from the device code. */
+  id: string;
+  tag: string | null;
+};
+
 export interface Sensor {
+  /** The device code printed on the sensor, e.g. 'SENSOR-LKO-001'. */
   sensorId: string;
   temperature: number;
   ph: number;
@@ -175,6 +183,6 @@ export interface Sensor {
   moisture: number;
   salinity: number;
   npk: npk;
-  status: "normal" | "warning" | "offline"; // these are just test labels
-  actions: any;
+  status: "normal" | "warning" | "offline";
+  actions: sensorActions;
 }

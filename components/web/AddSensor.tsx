@@ -27,6 +27,7 @@ import { Input } from "../ui/input";
 import { FieldError } from "../ui/field";
 import Link from "next/link";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 const addSensorButtons = [
   {
@@ -59,17 +60,40 @@ export default function DialogWrapper({
     },
   });
   const [pending, startTransition] = useTransition();
+  const [submitting, setSubmitting] = useState(false);
+  const router = useRouter();
 
-  const onSubmit = (data: SensorFormValues) => {
-    startTransition(() => {
+  const onSubmit = async (data: SensorFormValues) => {
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/sensors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        toast.error(body?.error ?? "Could not connect to the sensor.");
+        return;
+      }
+
       toast.success("Sensor connected successfully", {
-        description: "Sensor connected successfully",
+        description: `${data.sensorId} is now registered.`,
       });
       setOpenForm(false);
       onOpenChange(false);
       sensorForm.reset();
-    });
+      // Refresh so the sensors table and empty-state gate pick up the new row.
+      startTransition(() => router.refresh());
+    } catch {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  const busy = submitting || pending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -139,8 +163,8 @@ export default function DialogWrapper({
                     </FormItem>
                   )}
                 />
-                <Button type="submit">
-                  {pending ? (
+                <Button type="submit" disabled={busy}>
+                  {busy ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Connecting...

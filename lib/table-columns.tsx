@@ -1,3 +1,5 @@
+"use client";
+
 import { ColumnDef } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -14,6 +16,8 @@ import { MoreHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Sensor } from "./types";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export const columns: ColumnDef<Sensor>[] = [
   {
@@ -145,42 +149,58 @@ export const columns: ColumnDef<Sensor>[] = [
   {
     id: "actions",
     enableHiding: false,
-    cell: ({ row }) => {
-      const sensor = row.original;
-      const router = useRouter();
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(sensor.sensorId)}
-            >
-              Copy Sensor ID
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() =>
-                router.push(`/dashboard/sensors/${sensor.sensorId}`)
-              }
-            >
-              View Details
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive">
-              Delete sensor
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive">
-              {sensor.actions.alert ? "Acknowledge Alert" : "Set Alert"}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
+    // Rendered via a component so `useRouter` runs inside a real component
+    // body rather than directly in this cell callback.
+    cell: ({ row }) => <SensorRowActions sensor={row.original} />,
   },
 ];
+
+function SensorRowActions({ sensor }: { sensor: Sensor }) {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+
+  async function handleDelete() {
+    setPending(true);
+    try {
+      const response = await fetch(
+        `/api/sensors/${encodeURIComponent(sensor.sensorId)}`,
+        { method: "DELETE" },
+      );
+      if (!response.ok) throw new Error(await response.text());
+      toast.success(`${sensor.sensorId} deleted`);
+      router.refresh();
+    } catch {
+      toast.error("Could not delete the sensor. Please try again.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="h-8 w-8 p-0" disabled={pending}>
+          <span className="sr-only">Open menu</span>
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>Actions</DropdownMenuLabel>
+        <DropdownMenuItem
+          onClick={() => navigator.clipboard.writeText(sensor.sensorId)}
+        >
+          Copy Sensor ID
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => router.push(`/dashboard/sensors/${sensor.sensorId}`)}
+        >
+          View Details
+        </DropdownMenuItem>
+        <DropdownMenuItem className="text-destructive" onClick={handleDelete}>
+          Delete sensor
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}

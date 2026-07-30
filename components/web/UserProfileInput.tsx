@@ -11,54 +11,89 @@ import { useState, useTransition } from "react";
 import { Input } from "../ui/input";
 import Image from "next/image";
 import profileImage from "@/assets/images/profile.png";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+
+type profileFormType = z.infer<typeof userProfileSchema>;
+type farmProfileFormType = z.infer<typeof farmProfileSchema>;
 
 export default function UserProfileInput({
   farmSettings,
+  initialProfile,
+  initialFarm,
 }: {
   farmSettings: boolean;
+  initialProfile?: Partial<profileFormType>;
+  initialFarm?: Partial<farmProfileFormType>;
 }) {
-  type profileFormType = z.infer<typeof userProfileSchema>;
-
   const [pending, startTransition] = useTransition();
   const [editMode, setEditMode] = useState<boolean>(true);
+  const [saving, setSaving] = useState<boolean>(false);
+  const router = useRouter();
+
   const profileForm = useForm<profileFormType>({
     resolver: zodResolver(userProfileSchema),
     defaultValues: {
-      name: "",
-      email: "frumarkcarrington@gmail.com",
-      address: "",
-      phone: "",
+      name: initialProfile?.name ?? "",
+      email: initialProfile?.email ?? "",
+      address: initialProfile?.address ?? "",
+      phone: initialProfile?.phone ?? "",
     },
   });
 
-  type farmProfileFormType = z.infer<typeof farmProfileSchema>;
   const farmProfileForm = useForm<farmProfileFormType>({
     resolver: zodResolver(farmProfileSchema),
     defaultValues: {
-      country: "",
-      city: "",
-      address: "",
-      state: "",
-      farmSize: 0,
-      farmZones: 0,
-      farmType: "",
-      farmName: "",
+      country: initialFarm?.country ?? "",
+      city: initialFarm?.city ?? "",
+      address: initialFarm?.address ?? "",
+      state: initialFarm?.state ?? "",
+      farmSize: initialFarm?.farmSize ?? 0,
+      farmZones: initialFarm?.farmZones ?? 0,
+      farmType: initialFarm?.farmType ?? "",
+      farmName: initialFarm?.farmName ?? "",
     },
   });
 
-  const onSubmit = (data: profileFormType) => {
-    console.log(data);
-    startTransition(() => {
-      setEditMode(!editMode);
-    });
-  };
+  /** PUT persists the user profile, POST persists the farm profile. */
+  async function save(
+    method: "PUT" | "POST",
+    body: profileFormType | farmProfileFormType,
+    successMessage: string,
+  ) {
+    setSaving(true);
+    try {
+      const response = await fetch("/api/profile", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
-  const onSubmitFarm = (data: farmProfileFormType) => {
-    console.log(data);
-    startTransition(() => {
-      setEditMode(!editMode);
-    });
-  };
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        toast.error(payload?.error ?? "Could not save your changes.");
+        return;
+      }
+
+      toast.success(successMessage);
+      startTransition(() => {
+        setEditMode((previous) => !previous);
+        router.refresh();
+      });
+    } catch {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const busy = saving || pending;
+
+  const onSubmit = (data: profileFormType) =>
+    save("PUT", data, "Profile saved");
+
+  const onSubmitFarm = (data: farmProfileFormType) =>
+    save("POST", data, "Farm profile saved");
 
   return (
     <div className="w-full flex flex-col items-center gap-5">
@@ -193,8 +228,8 @@ export default function UserProfileInput({
                 </div>
               </div>
             )}
-            <Button type="submit" className="bg-primary">
-              {pending ? (
+            <Button type="submit" className="bg-primary" disabled={busy}>
+              {busy ? (
                 <Loader className="animate-spin" />
               ) : editMode ? (
                 <Save />
@@ -415,9 +450,9 @@ export default function UserProfileInput({
                   )}
                 />
               </div>
-              <Button>
-                {pending ? <Loader className="animate-spin" /> : <Save />}{" "}
-                Update farm
+              <Button type="submit" disabled={busy}>
+                {busy ? <Loader className="animate-spin" /> : <Save />} Update
+                farm
               </Button>
             </form>
           </Form>
