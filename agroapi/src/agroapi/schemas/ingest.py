@@ -22,6 +22,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from agroapi.errors import RejectionCode
+
 
 class Npk(BaseModel):
     """Nitrogen, phosphorus, potassium in mg/kg.
@@ -138,3 +140,38 @@ class TelemetryBatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     batch: list[TelemetryEnvelope]
+
+
+class RejectedItem(BaseModel):
+    """One item the server will never accept, and why.
+
+    `index` positions it within the submitted batch so a device can drop the
+    right buffer entry; it is 0 for a single envelope. `uid` is echoed when the
+    device sent one, because a store-and-forward queue is keyed on that rather
+    than on submission order.
+    """
+
+    index: int
+    uid: str | None = None
+    code: RejectionCode
+    message: str
+
+
+class IngestAck(BaseModel):
+    """What the device gets back. The entire server-to-device contract.
+
+    There is no back-channel here by design — no config push, no interval
+    change. `dashboard-contract.md` specifies a payload and an HTTP status, and
+    inventing a downstream protocol in the ack would be writing a contract the
+    firmware has never agreed to.
+
+    What it does carry is the one thing a device with a flash buffer genuinely
+    cannot work without: which items to delete. `accepted` and `duplicates` are
+    both successes — a replayed reading that was already stored is *delivered* —
+    and every entry in `rejected` is permanently bad, so the node must drop it
+    rather than retry it until the flash wears out.
+    """
+
+    accepted: int
+    duplicates: int
+    rejected: list[RejectedItem]

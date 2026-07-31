@@ -57,10 +57,24 @@ begin
 
     -- Six hourly readings so the "last 5 data points" table and any trend view
     -- have real history. Values drift slightly around the base reading.
+    --
+    -- Writes ph_soil, not ph: 0002 turned `ph` into a STORED generated column
+    -- (coalesce(ph_soil, ph_water)), so naming it here fails with "cannot insert
+    -- a non-DEFAULT value into column". These fixtures are soil-probe readings,
+    -- which is the same thing the legacy flat `ph` meant.
+    --
+    -- The quality block is supplied in full because
+    -- sensor_readings_quality_complete enforces all-three-or-none — the schema's
+    -- way of guaranteeing a half-populated block can never be read as three
+    -- `false` values. npk_estimated is true because it is always true: the probe
+    -- has no chemistry isolating N, P or K and back-calculates all three from
+    -- bulk conductivity. Seeding it `false` would assert something about this
+    -- hardware that is not so, and would license fertiliser advice built on it.
     for v_i in 0..5 loop
       insert into public.sensor_readings (
-        sensor_id, recorded_at, temperature, ph, sunlight,
-        moisture, salinity, nitrogen, phosphorus, potassium
+        sensor_id, recorded_at, temperature, ph_soil, sunlight,
+        moisture, salinity, nitrogen, phosphorus, potassium,
+        npk_estimated, stabilising, soil_dry
       )
       values (
         v_sensor,
@@ -72,7 +86,8 @@ begin
         v_row.salinity    + (v_i * 0.01),
         greatest(v_row.n  - (v_i * 1.5), 0),
         greatest(v_row.p  - (v_i * 0.8), 0),
-        greatest(v_row.k  - (v_i * 2.0), 0)
+        greatest(v_row.k  - (v_i * 2.0), 0),
+        true, false, false
       );
     end loop;
   end loop;

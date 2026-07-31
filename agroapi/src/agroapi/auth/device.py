@@ -52,8 +52,21 @@ def parse(raw: str) -> ParsedToken | None:
 
     Structural rejection is intentionally indistinguishable from a wrong secret
     at the HTTP layer; see `errors.invalid_token`.
+
+    The `maxsplit=3` is load-bearing, not tidiness. `secrets.token_urlsafe`
+    emits base64url, whose alphabet INCLUDES the underscore — so a 43-character
+    secret contains at least one about half the time. An unbounded split would
+    return five or more parts for those, fail the length check, and reject the
+    credential as malformed: roughly every other minted token would be
+    permanently unusable, and the 401 it produced would be indistinguishable
+    from a wrong secret. Splitting three times puts the whole remainder in
+    `secret`, where the separator is just another character.
+
+    Only the first three fields are delimited, and both are safe to bound this
+    way: the prefix and version are literals, and `token_id` is `token_hex`,
+    which cannot contain an underscore.
     """
-    parts = raw.strip().split("_")
+    parts = raw.strip().split("_", 3)
     if len(parts) != 4:
         return None
     prefix, version, token_id, secret = parts

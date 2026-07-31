@@ -123,12 +123,20 @@ jobs:
               (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')
             )::uuid
           $$;
+          -- service_role must hold BYPASSRLS and authenticated must not. That
+          -- asymmetry is the security model: db/session.py:service_scope SET
+          -- ROLEs to service_role for ingest, and without BYPASSRLS the policies
+          -- stay in force, auth.uid() is null, and every query silently returns
+          -- zero rows. Granting authenticated the same would make the
+          -- cross-tenant isolation tests pass for the wrong reason.
           do $$ begin
             if not exists (select 1 from pg_roles where rolname = 'authenticated') then
               create role authenticated;
             end if;
             if not exists (select 1 from pg_roles where rolname = 'service_role') then
-              create role service_role;
+              create role service_role bypassrls;
+            else
+              alter role service_role bypassrls;
             end if;
           end $$;
           SQL
@@ -137,29 +145,22 @@ jobs:
             psql -h localhost -U postgres -d agrosmart_test -v ON_ERROR_STOP=1 -f "$f"
           done
 
-      # pytest exits 5 when every collected test is deselected, which is the
-      # situation today: the marker exists and no test carries it yet. Exit 5 is
-      # tolerated so the job is honest rather than red for being empty — but ONLY
-      # exit 5. A genuine failure (1) still fails the build.
+      # The exit-5 tolerance that used to live here is gone, as its own comment
+      # asked: integration tests now exist, so an empty selection means someone
+      # deleted or mis-marked them and the build should say so.
       #
-      # Delete this tolerance as soon as the first integration test lands; an
-      # accidentally-empty suite passing silently is worse than an empty one
-      # being obvious.
+      # AGRO_REQUIRE_INTEGRATION_DB turns the conftest's "no database, skip"
+      # ergonomics into a hard failure. Locally a skip is right; here the database
+      # is a provisioned service, so its absence means the pipeline is broken —
+      # and without this flag a container that failed to start would turn every
+      # cross-tenant isolation assertion into a silent `s` and report green.
       - name: Integration tests
         env:
           AGRO_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/agrosmart_test
           AGRO_SUPABASE_URL: https://example.supabase.co
           AGRO_TOKEN_PEPPER: ci-pepper-not-a-secret
-        run: |
-          set +e
-          uv run pytest -m integration -v
-          code=$?
-          set -e
-          if [ "$code" = "5" ]; then
-            echo "::warning::No integration tests are marked yet. Passing on exit 5."
-            exit 0
-          fi
-          exit "$code"
+          AGRO_REQUIRE_INTEGRATION_DB: "1"
+        run: uv run pytest -m integration -v
 
   image:
     name: Docker build

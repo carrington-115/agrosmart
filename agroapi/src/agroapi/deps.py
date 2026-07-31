@@ -15,11 +15,13 @@ from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWTError
 
+from agroapi.auth import device
 from agroapi.auth.supabase_jwt import Claims, JwtVerifier
 from agroapi.config import Settings, settings
+from agroapi.db.repositories import devices
 from agroapi.db.session import ServiceConn, UserConn, service_scope, user_scope
 from agroapi.db.types import DbPool
-from agroapi.errors import not_authenticated
+from agroapi.errors import invalid_token, not_authenticated
 
 #: auto_error=False so a missing header produces our typed 401 rather than
 #: FastAPI's untyped one — the shape of an error response is part of the API.
@@ -78,3 +80,51 @@ async def service_conn(
     """
     async with service_scope(pool) as conn:
         yield conn
+
+
+async def current_device(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+    conn: Annotated[ServiceConn, Depends(service_conn)],
+    config: Annotated[Settings, Depends(get_settings)],
+) -> devices.DeviceIdentity:
+    """Resolve a per-device bearer token to the sensor it speaks for.
+
+    Every failure — no header, malformed token, unknown `token_id`, revoked,
+    expired, wrong secret — raises the SAME 401, so a caller cannot use the
+    response to enumerate which devices exist.
+
+    Two details carry that guarantee and both look redundant until you remove
+    them:
+
+    * The lookup is keyed on `token_id`, which is public. There is no iteration
+      over candidate rows, so the database does not leak timing.
+    * `dummy_verify` burns a comparable HMAC on the unknown-`token_id` path.
+      Without it an unknown id returns measurably faster than a known id with a
+      bad secret, and the uniform 401 above becomes decorative.
+
+    Note that this depends on `service_conn`, so the whole request — auth lookup
+    and the writes that follow — runs inside one transaction on one connection.
+    """
+    pepper = config.token_pepper.get_secret_value()
+
+    if credentials is None or not credentials.credentials:
+        raise invalid_token()
+
+    parsed = device.parse(credentials.credentials)
+    if parsed is None:
+        # A structurally invalid token is rejected without a lookup, but still
+        # pays the HMAC — otherwise "not even a token" is distinguishable from
+        # "a real token with the wrong secret" by a stopwatch.
+        device.dummy_verify(pepper)
+        raise invalid_token()
+
+    identity = await devices.find_active_token(conn, parsed.token_id)
+    if identity is None:
+        device.dummy_verify(pepper)
+        raise invalid_token()
+
+    if not device.verify(pepper, parsed, identity.secret_hash):
+        raise invalid_token()
+
+    await devices.touch_last_used(conn, identity.token_id)
+    return identity

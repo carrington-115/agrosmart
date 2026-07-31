@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from agroapi.auth.supabase_jwt import JwtVerifier
 from agroapi.config import settings
 from agroapi.db.pool import open_pool
-from agroapi.routers import health
+from agroapi.routers import health, ingest
 
 API_PREFIX = "/v1"
 
@@ -61,6 +61,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health.router, prefix=API_PREFIX)
+    app.include_router(ingest.router, prefix=API_PREFIX)
 
     return app
 
