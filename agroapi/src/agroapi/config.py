@@ -13,9 +13,10 @@ it. A misconfigured deployment should be loud and immediate.
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Annotated
 
-from pydantic import Field, SecretStr
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, SecretStr, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -59,8 +60,28 @@ class Settings(BaseSettings):
 
     #: Origins allowed to call the read API. The dashboard runs on a different
     #: origin, so it needs CORS; devices do not, being no kind of browser.
+    #:
     #: Comma-separated in the environment: AGRO_CORS_ORIGINS=https://a,https://b
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    #:
+    #: `NoDecode` is load-bearing. pydantic-settings decodes complex types from
+    #: the environment as JSON *inside the settings source*, before any validator
+    #: runs — so a plain `https://example` raised SettingsError at import and the
+    #: process crash-looped before serving a single request. That is exactly what
+    #: happened the first time these manifests were applied to a cluster, because
+    #: a ConfigMap value is a plain string and demanding JSON there is a trap.
+    #: NoDecode suppresses that decoding and hands the raw string to the
+    #: validator below.
+    cors_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["http://localhost:3000"]
+    )
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _split_comma_separated(cls, value: object) -> object:
+        """Accept `a,b` from the environment and `["a","b"]` from Python."""
+        if isinstance(value, str):
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return value
 
     # Pepper for device-token HMACs. Keeps a leaked database dump from yielding
     # usable tokens. Generate with: openssl rand -hex 32

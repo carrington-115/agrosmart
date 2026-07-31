@@ -1,0 +1,33 @@
+# Environment-independent manifests. NOT deployable on its own: it pins no image
+# tags and declares no secret. Apply an overlay instead:
+#
+#   kubectl apply -k deploy/k8s/overlays/prod
+#   bash      deploy/k8s/overlays/local/apply.sh
+#
+# The namespace is listed first because it must exist before anything lands in
+# it, and its Pod Security Standard labels must be in place before the first pod
+# is admitted.
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: agrosmart
+
+resources:
+  - namespace.yaml
+  - agroapi.yaml
+  - agroapp.yaml
+  - ingress.yaml
+
+# `includeSelectors: false` is the reason this uses `labels` rather than the
+# older `commonLabels`, which is deprecated AND writes into
+# spec.selector.matchLabels. That field is IMMUTABLE: once applied, renaming or
+# removing the label means deleting the Deployment to change it. Selectors are
+# spelled out in each manifest and should stay under their own control.
+labels:
+  - includeSelectors: false
+    pairs:
+      app.kubernetes.io/part-of: agrosmart
+
+# No `images:` block, and no Secret. Each overlay supplies its own — prod points
+# at GHCR, local at images side-loaded into the cluster.

@@ -1,0 +1,108 @@
+# Local verification on minikube. Never applied to a real cluster.
+#
+#   bash deploy/k8s/overlays/local/apply.sh
+#
+# Use the script rather than `kubectl apply -k` directly: the migration ConfigMap
+# is built from agroapp/supabase/migrations/, which lives outside this kustomize
+# root. Reaching outside needs --load-restrictor LoadRestrictionsNone, and
+# `kubectl apply -k` does not accept that flag.
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: agrosmart
+
+resources:
+  - ../../base
+  - postgres.yaml
+  - migrate-job.yaml
+  - netpol-postgres.yaml
+
+# Built locally and side-loaded with `minikube image load`. GHCR cannot be used
+# here: published packages are private by default, so an anonymous pull returns
+# 401 and every pod would sit in ImagePullBackOff. The base sets
+# imagePullPolicy: IfNotPresent, which is what makes a side-loaded image win.
+images:
+  - name: ghcr.io/carrington-115/agroapi
+    newName: agroapi
+    newTag: local
+  - name: ghcr.io/carrington-115/agroapp
+    newName: agroapp
+    newTag: local
+
+# Throwaway credentials for the in-cluster Postgres. Deliberately fake and
+# deliberately committed — there is nothing here to protect, and a reader should
+# be able to tell that at a glance.
+#
+# Note the user is `postgres`, not `agro_api`. This database has no RLS policies
+# worth enforcing and no setup_api_role.sql has been run against it; the point of
+# this overlay is to exercise the DEPLOY layer, not tenant isolation, which is
+# covered by the backend's own integration tests.
+#
+# The generated name carries a content hash, so changing a value rolls the pods
+# automatically instead of leaving them on stale configuration.
+secretGenerator:
+  - name: agroapi-secrets
+    literals:
+      - AGRO_DATABASE_URL=postgresql://postgres:postgres@postgres:5432/agrosmart_test
+      - AGRO_TOKEN_PEPPER=local-only-not-a-secret-0000000000000000
+
+patches:
+  # The JWKS readiness check performs a real HTTPS GET against
+  # $AGRO_SUPABASE_URL/auth/v1/.well-known/jwks.json. It needs a live project or
+  # agroapi never becomes ready — so the placeholder must be replaced even
+  # locally. This URL is public: it ships inside every client bundle and is
+  # already a repository variable.
+  - target:
+      kind: ConfigMap
+      name: agroapi-config
+    patch: |-
+      - op: replace
+        path: /data/AGRO_SUPABASE_URL
+        value: https://kdrknpokrswfzaoyatpi.supabase.co
+      - op: replace
+        path: /data/AGRO_CORS_ORIGINS
+        value: http://agrosmart.local
+
+  # Local hostnames, and both TLS mechanisms removed. Without this,
+  # force-ssl-redirect answers plain HTTP with a 308, and the TLS block names a
+  # certificate that no cert-manager exists to issue.
+  - target:
+      kind: Ingress
+      name: agroapp
+    patch: |-
+      - op: remove
+        path: /spec/tls
+      - op: remove
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+      - op: remove
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1force-ssl-redirect
+      - op: replace
+        path: /spec/rules/0/host
+        value: agrosmart.local
+
+  - target:
+      kind: Ingress
+      name: agroapi
+    patch: |-
+      - op: remove
+        path: /spec/tls
+      - op: remove
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+      - op: remove
+        path: /metadata/annotations/nginx.ingress.kubernetes.io~1force-ssl-redirect
+      - op: replace
+        path: /spec/rules/0/host
+        value: api.agrosmart.local
+
+  # One replica each. A single-node minikube gains nothing from two, and it keeps
+  # the rolling-update test readable — though replicas stay at 2 for the rollout
+  # check itself, which is re-scaled explicitly when that test runs.
+  - target:
+      kind: Deployment
+      name: agroapp
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+

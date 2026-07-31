@@ -1,0 +1,38 @@
+# Lets the backend and the migration Job reach the throwaway Postgres.
+#
+# The base `default-deny-ingress` policy selects EVERY pod in the namespace
+# (podSelector: {}), and `allow-ingress-controller` only re-opens agroapi and
+# agroapp to the ingress controller. Postgres is therefore denied everything, so
+# without this policy agroapi could not open a connection and would never pass
+# readiness — on a CNI that enforces policy.
+#
+# Local only. Production has no Postgres pod: Supabase is external, and the base
+# policies restrict ingress only (policyTypes: [Ingress]), so outbound
+# connections to it are unaffected.
+#
+# NOTE: minikube's default CNI (bridge/kindnet) does NOT enforce NetworkPolicy,
+# so on a default cluster this is accepted and ignored — as is the default-deny
+# it compensates for. Both only take effect with a policy-capable CNI:
+#
+#   minikube delete && minikube start --cni=calico
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-postgres-from-backend
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: agroapi
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: migrate
+      ports:
+        - protocol: TCP
+          port: 5432

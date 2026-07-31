@@ -1,0 +1,36 @@
+# Production. Reproduces exactly what deploy/k8s used to apply directly.
+#
+#   kubectl apply -k deploy/k8s/overlays/prod
+#
+# Prerequisites this overlay does NOT create, and a real cluster must already
+# have:
+#
+#   1. The secret, created out of band — see the note in ../../base/agroapi.yaml:
+#        kubectl -n agrosmart create secret generic agroapi-secrets \
+#          --from-literal=AGRO_DATABASE_URL='postgresql://agro_api:...' \
+#          --from-literal=AGRO_TOKEN_PEPPER="$(openssl rand -hex 32)"
+#   2. A GHCR image-pull secret. Published packages are PRIVATE by default — an
+#      anonymous manifest fetch returns 401 — so without one every pod sits in
+#      ImagePullBackOff:
+#        kubectl -n agrosmart create secret docker-registry ghcr \
+#          --docker-server=ghcr.io --docker-username=<user> --docker-password=<PAT>
+#      then add it as imagePullSecrets, or make the packages public.
+#   3. ingress-nginx, and cert-manager with a `letsencrypt-prod` ClusterIssuer.
+#   4. DNS for agrosmart.example and api.agrosmart.example.
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: agrosmart
+
+resources:
+  - ../../base
+
+# `latest` is a placeholder so a manual apply resolves to something. Real
+# deployments should pin the digest publish-images.yml prints, because a mutable
+# tag makes a rollback unreproducible — which is exactly when you need it to be.
+images:
+  - name: ghcr.io/carrington-115/agroapi
+    newTag: latest
+  - name: ghcr.io/carrington-115/agroapp
+    newTag: latest

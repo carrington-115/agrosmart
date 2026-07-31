@@ -1,0 +1,102 @@
+# Throwaway Postgres for exercising the deploy layer.
+#
+# LOCAL OVERLAY ONLY. Production talks to Supabase; nothing here is ever applied
+# to a real cluster, which is why the credentials are plainly fake and storage is
+# ephemeral.
+#
+# emptyDir rather than a PersistentVolumeClaim, matching docker-compose's tmpfs
+# choice: this database is meant to be thrown away, and never persisting it
+# removes the temptation to treat it as a source of truth.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  labels:
+    app.kubernetes.io/name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+  # Recreate, not RollingUpdate: two Postgres pods must never share one emptyDir
+  # claim, and there is nothing here worth a zero-downtime rollout.
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres
+        app.kubernetes.io/part-of: agrosmart
+    spec:
+      # The namespace enforces the `restricted` Pod Security Standard, which the
+      # stock postgres image does not satisfy by default — it starts as root to
+      # chown its data directory. 70:70 is the postgres user in the alpine image,
+      # and fsGroup makes the emptyDir writable by it.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_PASSWORD
+              value: postgres
+            - name: POSTGRES_DB
+              value: agrosmart_test
+            # The alpine image refuses to initialise into a non-empty directory,
+            # and a mounted volume root can contain lost+found. A subdirectory
+            # sidesteps it.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "agrosmart_test"]
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            # Postgres writes its socket and lock files here; the image expects
+            # it to exist and be writable.
+            - name: run
+              mountPath: /var/run/postgresql
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  selector:
+    app.kubernetes.io/name: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

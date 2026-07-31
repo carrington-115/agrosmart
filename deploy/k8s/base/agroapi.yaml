@@ -17,7 +17,18 @@ data:
   # and the HPA below can take that to 6.
   AGRO_DB_POOL_MAX_SIZE: "10"
 ---
-# Template only. Do NOT commit real values — create it out of band:
+# NOTE: `agroapi-secrets` is deliberately NOT declared here.
+#
+# It used to be, as a template with REPLACE_ME values — which meant the flow the
+# README documents (create the secret out of band, then `kubectl apply -k`)
+# overwrote real credentials with the literal string "REPLACE_ME" on every apply.
+# Following the instructions broke the deployment.
+#
+# The Deployment below still requires it via envFrom.secretRef, so an absent
+# secret is a loud CreateContainerConfigError rather than a pod that starts with
+# empty configuration. Fail-closed, and it can no longer clobber anything.
+#
+# Production creates it out of band:
 #
 #   kubectl -n agrosmart create secret generic agroapi-secrets \
 #     --from-literal=AGRO_DATABASE_URL='postgresql://agro_api:...@db.<ref>.supabase.co:5432/postgres' \
@@ -30,18 +41,8 @@ data:
 # Rotating AGRO_TOKEN_PEPPER invalidates every device token, since the stored
 # hashes are keyed by it. That means reflashing every node, so treat it as a
 # break-glass action rather than routine hygiene.
-apiVersion: v1
-kind: Secret
-metadata:
-  name: agroapi-secrets
-  namespace: agrosmart
-  annotations:
-    agrosmart.dev/managed-out-of-band: "true"
-type: Opaque
-stringData:
-  AGRO_DATABASE_URL: "REPLACE_ME"
-  AGRO_TOKEN_PEPPER: "REPLACE_ME"
----
+#
+# overlays/local generates a throwaway one with obviously fake values.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
