@@ -36,11 +36,32 @@ language sql stable as $$
     (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')
   )::uuid
 $$;
+-- service_role must hold BYPASSRLS and authenticated must not. That asymmetry is
+-- the security model: db/session.py:service_scope SET ROLEs to service_role for
+-- ingest, and without BYPASSRLS the policies stay in force, auth.uid() is null,
+-- and every query silently returns zero rows. Granting authenticated the same
+-- would make the cross-tenant isolation tests pass for the wrong reason.
 do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'authenticated') then
     create role authenticated;
   end if;
   if not exists (select 1 from pg_roles where rolname = 'service_role') then
-    create role service_role;
+    create role service_role bypassrls;
+  else
+    alter role service_role bypassrls;
   end if;
 end $$;
+
+-- BYPASSRLS skips POLICIES; it does not grant table PRIVILEGES. Both are needed,
+-- and Supabase gives both — without the grants below, SET ROLE service_role then
+-- touching any table fails with "permission denied for table sensors", which
+-- reads like an RLS problem and is not one.
+--
+-- ALTER DEFAULT PRIVILEGES rather than GRANT ON ALL TABLES because this stub runs
+-- BEFORE the migrations: there are no tables yet, so a plain grant would silently
+-- apply to nothing.
+grant usage on schema public to authenticated, service_role;
+alter default privileges in schema public
+  grant all on tables to authenticated, service_role;
+alter default privileges in schema public
+  grant all on sequences to authenticated, service_role;

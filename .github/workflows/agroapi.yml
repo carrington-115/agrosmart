@@ -139,6 +139,21 @@ jobs:
               alter role service_role bypassrls;
             end if;
           end $$;
+
+          -- BYPASSRLS skips POLICIES; it does not grant table PRIVILEGES. Both
+          -- are needed, and Supabase gives both — without the grants below,
+          -- SET ROLE service_role then touching any table fails with
+          -- "permission denied for table sensors", which reads like an RLS
+          -- problem and is not one.
+          --
+          -- ALTER DEFAULT PRIVILEGES rather than GRANT ON ALL TABLES because
+          -- this stub runs BEFORE the migrations: there are no tables yet, so a
+          -- plain grant would silently apply to nothing.
+          grant usage on schema public to authenticated, service_role;
+          alter default privileges in schema public
+            grant all on tables to authenticated, service_role;
+          alter default privileges in schema public
+            grant all on sequences to authenticated, service_role;
           SQL
           for f in ../agroapp/supabase/migrations/*.sql; do
             echo "applying $f"
