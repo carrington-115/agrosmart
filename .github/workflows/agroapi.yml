@@ -95,70 +95,30 @@ jobs:
       - name: Install
         run: uv sync --frozen --all-extras
 
-      # The migrations live in the frontend workspace because the Supabase CLI is
-      # the only applier — see CLAUDE.md. Applied here with psql because this
-      # database is disposable and the CLI would want a linked project.
+      # Runs the SAME script contributors run locally, rather than a second copy
+      # of the setup inline here.
       #
-      # 0001 references auth.users, which only exists on a real Supabase
-      # instance, so the schemas and the role are stubbed first. If this stub
-      # drifts from what Supabase actually provides, the integration suite is
-      # testing a fiction — worth remembering when a test passes here and fails
-      # against staging.
-      - name: Apply migrations
+      # It used to be duplicated, on the reasoning that a workflow should not
+      # depend on a file in the tree it is testing. That duplication then caused
+      # two consecutive red builds on master: the inline copy was missing the
+      # table GRANTs the roles need, and then missing the owner/sensor fixtures
+      # the ingest tests require. `bash <script>` works regardless of the
+      # executable bit, so the original reason did not hold and the drift was
+      # pure cost.
+      #
+      # The script stubs auth.users and auth.uid() (Supabase-only), creates the
+      # two roles with the BYPASSRLS asymmetry the security model depends on,
+      # applies every migration from agroapp/supabase/migrations, grants the
+      # stubbed roles their privileges, and seeds two owners so cross-tenant
+      # isolation has a second tenant to fail against.
+      - name: Apply migrations and seed fixtures
         env:
+          PGHOST: localhost
+          PGPORT: "5432"          # the service port; the compose default is 55432
+          PGUSER: postgres
+          PGDATABASE: agrosmart_test
           PGPASSWORD: postgres
-        run: |
-          psql -h localhost -U postgres -d agrosmart_test -v ON_ERROR_STOP=1 <<'SQL'
-          create schema if not exists auth;
-          create table if not exists auth.users (
-            id uuid primary key default gen_random_uuid(),
-            email text,
-            raw_user_meta_data jsonb default '{}'::jsonb,
-            created_at timestamptz not null default now()
-          );
-          create or replace function auth.uid() returns uuid
-          language sql stable as $$
-            select coalesce(
-              nullif(current_setting('request.jwt.claim.sub', true), ''),
-              (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')
-            )::uuid
-          $$;
-          -- service_role must hold BYPASSRLS and authenticated must not. That
-          -- asymmetry is the security model: db/session.py:service_scope SET
-          -- ROLEs to service_role for ingest, and without BYPASSRLS the policies
-          -- stay in force, auth.uid() is null, and every query silently returns
-          -- zero rows. Granting authenticated the same would make the
-          -- cross-tenant isolation tests pass for the wrong reason.
-          do $$ begin
-            if not exists (select 1 from pg_roles where rolname = 'authenticated') then
-              create role authenticated;
-            end if;
-            if not exists (select 1 from pg_roles where rolname = 'service_role') then
-              create role service_role bypassrls;
-            else
-              alter role service_role bypassrls;
-            end if;
-          end $$;
-
-          -- BYPASSRLS skips POLICIES; it does not grant table PRIVILEGES. Both
-          -- are needed, and Supabase gives both — without the grants below,
-          -- SET ROLE service_role then touching any table fails with
-          -- "permission denied for table sensors", which reads like an RLS
-          -- problem and is not one.
-          --
-          -- ALTER DEFAULT PRIVILEGES rather than GRANT ON ALL TABLES because
-          -- this stub runs BEFORE the migrations: there are no tables yet, so a
-          -- plain grant would silently apply to nothing.
-          grant usage on schema public to authenticated, service_role;
-          alter default privileges in schema public
-            grant all on tables to authenticated, service_role;
-          alter default privileges in schema public
-            grant all on sequences to authenticated, service_role;
-          SQL
-          for f in ../agroapp/supabase/migrations/*.sql; do
-            echo "applying $f"
-            psql -h localhost -U postgres -d agrosmart_test -v ON_ERROR_STOP=1 -f "$f"
-          done
+        run: bash scripts/setup_test_db.sh
 
       # The exit-5 tolerance that used to live here is gone, as its own comment
       # asked: integration tests now exist, so an empty selection means someone
