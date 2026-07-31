@@ -39,48 +39,70 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Fail fast and say what is missing. Without this the agroapp build gets
-      # empty NEXT_PUBLIC_* args and dies inside `pnpm build` with
-      # "@supabase/ssr: Your project's URL and API key are required", which names
-      # neither the workflow nor the variable you actually have to set.
+      # agroapp needs its NEXT_PUBLIC_* values at BUILD time — Next inlines them
+      # into the client bundle, so an empty build arg produces an image that
+      # cannot construct a Supabase client. Without this check the build dies
+      # deep inside `pnpm build` with "@supabase/ssr: Your project's URL and API
+      # key are required", naming neither the workflow nor the variable to set.
       #
-      # Deliberately NOT defaulted to placeholders: a published image with
-      # placeholder Supabase config is worse than no image, because it looks
-      # deployable and fails only in front of a user.
-      - name: Require build configuration
-        if: matrix.name == 'agroapp'
+      # This SKIPS rather than fails. A fork or a fresh clone has no repository
+      # variables and cannot be expected to, so a red X there reports a
+      # misconfiguration that does not exist. Publishing resumes automatically
+      # once the variables are set — no workflow edit needed.
+      #
+      # Deliberately NOT defaulted to placeholders: a published image carrying
+      # placeholder Supabase config is worse than no image at all, because it
+      # looks deployable and fails only once it is in front of a user.
+      #
+      # agroapi takes no build args, so it is always considered configured.
+      - name: Check build configuration
+        id: config
         env:
           URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-          API: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
         run: |
+          if [ "${{ matrix.name }}" != "agroapp" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           missing=""
           [ -n "$URL" ] || missing="$missing NEXT_PUBLIC_SUPABASE_URL"
           [ -n "$KEY" ] || missing="$missing NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
-          [ -n "$API" ] || missing="$missing NEXT_PUBLIC_API_BASE_URL"
+
           if [ -n "$missing" ]; then
-            echo "::error::Missing repository variables:$missing"
-            echo "These are inlined into the client bundle at build time, so the"
-            echo "image cannot be built without them. They are configuration, not"
-            echo "secrets — the publishable key already ships to every browser."
-            echo
-            echo "Set them under Settings -> Secrets and variables -> Actions ->"
-            echo "Variables, or with the CLI:"
-            echo "  gh variable set NEXT_PUBLIC_SUPABASE_URL --body 'https://<ref>.supabase.co'"
-            echo "  gh variable set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY --body 'sb_publishable_...'"
-            echo "  gh variable set NEXT_PUBLIC_API_BASE_URL --body 'https://api.<host>/v1'"
-            exit 1
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping agroapp publish — unset repository variables:$missing"
+            {
+              echo "### agroapp image not published"
+              echo
+              echo "Missing repository variables:\`$missing\`"
+              echo
+              echo "These are inlined into the client bundle at build time, so the"
+              echo "image cannot be built without them. They are configuration, not"
+              echo "secrets — the publishable key already ships to every browser."
+              echo
+              echo '```bash'
+              echo "gh variable set NEXT_PUBLIC_SUPABASE_URL --body 'https://<ref>.supabase.co'"
+              echo "gh variable set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY --body 'sb_publishable_...'"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: docker/setup-buildx-action@v3
+      - if: steps.config.outputs.configured == 'true'
+        uses: docker/setup-buildx-action@v3
 
-      - uses: docker/login-action@v3
+      - if: steps.config.outputs.configured == 'true'
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - id: meta
+        if: steps.config.outputs.configured == 'true'
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}
@@ -93,12 +115,11 @@ jobs:
             # reproducibility matters.
             type=sha,format=long
 
-      # The frontend needs its NEXT_PUBLIC_* values at BUILD time, since Next
-      # inlines them into the client bundle — setting them in the cluster would do
-      # nothing. They are configuration, not secrets: the publishable key is
-      # already served to every browser. Set them as repository variables under
-      # Settings -> Secrets and variables -> Actions -> Variables.
+      # Both build-args are ignored by the agroapi Dockerfile, which declares no
+      # ARG for them — harmless, and it keeps this a single matrixed step rather
+      # than two near-identical ones.
       - name: Build and push
+        if: steps.config.outputs.configured == 'true'
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.context }}
@@ -110,9 +131,9 @@ jobs:
           build-args: |
             NEXT_PUBLIC_SUPABASE_URL=${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
             NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-            NEXT_PUBLIC_API_BASE_URL=${{ vars.NEXT_PUBLIC_API_BASE_URL }}
 
       - name: Report digest to pin
+        if: steps.config.outputs.configured == 'true'
         run: |
           echo "Deploy this, not a mutable tag:"
           echo "  ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}@${{ steps.meta.outputs.digest || 'see build output' }}"

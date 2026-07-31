@@ -86,7 +86,6 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
-          NEXT_PUBLIC_API_BASE_URL: http://localhost:8080/v1
           NEXT_TELEMETRY_DISABLED: "1"
         run: pnpm build
 
@@ -123,7 +122,6 @@ jobs:
           build-args: |
             NEXT_PUBLIC_SUPABASE_URL=https://example.supabase.co
             NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ci_placeholder
-            NEXT_PUBLIC_API_BASE_URL=http://localhost:8080/v1
 
       # A standalone Next build can succeed and still fail to serve — the runtime
       # stage copies .next/standalone by hand, so a missing server.js or an

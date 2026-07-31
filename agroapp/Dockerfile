@@ -39,12 +39,17 @@ COPY . .
 #
 # SUPABASE_SERVICE_ROLE_KEY is deliberately absent and must never be added here.
 # It bypasses RLS, and a build arg would bake it into an image layer.
+#
+# The agroapi base URL is deliberately NOT here either, and should not be added
+# during the frontend cutover. lib/queries.ts will call the backend from Server
+# Components, which read ordinary runtime environment variables — only client
+# code needs NEXT_PUBLIC_ inlining, and every client fetch in this app targets a
+# relative path. Baking the API host in would force one image per environment for
+# no benefit; leaving it out means one image deploys everywhere.
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-ARG NEXT_PUBLIC_API_BASE_URL
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY \
-    NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL \
     NEXT_TELEMETRY_DISABLED=1
 
 RUN pnpm build
