@@ -49,6 +49,12 @@ services:
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:?set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
     ports:
       - "3000:3000"
+    environment:
+      # Runtime, not a build arg — the address differs per environment and the
+      # image must not. Read by Server Components through lib/api.ts. Without it
+      # the depends_on below is ordering and nothing more: the dashboard would
+      # wait for a backend it has no way to call.
+      AGRO_API_URL: http://agroapi:8080
     depends_on:
       agroapi:
         condition: service_healthy

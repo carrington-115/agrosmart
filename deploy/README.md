@@ -1,22 +1,78 @@
 # Deployment
 
+## Development
+
+```bash
+cp .env.example .env    # then fill it in; compose reads it automatically
+docker compose -f docker-compose.dev.yml up --build
+```
+
+Hot reload on both sides — `uvicorn --reload` over a read-only mount of
+`agroapi/src`, `next dev` over a bind-mounted `agroapp`. Then:
+
+```bash
+curl -s localhost:3000/api/dev/backend | jq   # no session needed
+```
+
+`http://localhost:3000/dev/backend` renders the same probe in the browser, behind
+the usual auth redirect.
+
+**This is the only thing in the repo that proves the two services are connected.**
+They share a Supabase database, so both can look perfectly healthy while no HTTP
+path between them exists at all — which was the case until `AGRO_API_URL` and
+`agroapp/lib/api.ts` landed. The probe asks agroapi two questions from inside the
+Next.js server: `/v1/health/ready`, and `POST /v1/ingest` with no credentials
+expecting a 401. The second proves more than the first, because readiness would
+answer even if every real route were unreachable.
+
+Read the results this way:
+
+| What you see | What it means |
+|---|---|
+| both checks pass | the connection works |
+| readiness `503`, ingest `401` | connection fine; agroapi's schema or JWKS is unhappy — the readiness body names which |
+| readiness `503`, ingest `500` | connection fine; agroapi cannot reach Postgres. Device auth resolves a service-scoped connection before it can reject a token, so a dead database surfaces as a 500 here rather than a 401 |
+| `reachable: false` | no HTTP path. Wrong `AGRO_API_URL`, or agroapi is down |
+| `error` naming `AGRO_API_URL` | it is unset. `lib/api.ts` refuses to guess a default, so this cannot be mistaken for an outage |
+
+CORS is not involved in any of this. The probe runs server-side and sends no
+`Origin` header, so `AGRO_CORS_ORIGINS` can be wrong without the probe noticing —
+it governs the browser's direct calls to agroapi, of which there are currently
+none.
+
+### If the frontend does not hot-reload on Windows
+
+Measured, so you do not have to guess: `uvicorn --reload` **does** see edits
+across a Docker Desktop bind mount rooted in `C:\Users\...\OneDrive\...` — editing
+a file under `agroapi/src` restarts the container's server process. The Next side
+is the one to distrust; Turbopack watches a far larger tree, and file-change
+events over that mount are not guaranteed. It is a filesystem limitation, not
+something to work around in the app.
+
+If edits stop taking effect, run the backend in Docker and the frontend on the
+host:
+
+```bash
+docker compose -f docker-compose.dev.yml up agroapi
+cd agroapp && AGRO_API_URL=http://localhost:8080 pnpm dev
+```
+
+The address changing between the two modes is the argument for `AGRO_API_URL`
+being a plain runtime variable rather than a `NEXT_PUBLIC_` build arg — one image
+that reads its backend's location, not one image per place it might be.
+
 ## Local
 
 ```bash
-# Both services against your Supabase project.
-export AGRO_DATABASE_URL='postgresql://agro_api:...@db.<ref>.supabase.co:5432/postgres'
-export AGRO_SUPABASE_URL='https://<ref>.supabase.co'
-export AGRO_TOKEN_PEPPER="$(openssl rand -hex 32)"
-export NEXT_PUBLIC_SUPABASE_URL="$AGRO_SUPABASE_URL"
-export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY='sb_publishable_...'
-
+# Production images, both services, against your Supabase project.
+cp .env.example .env
 docker compose up --build
 
 # Throwaway Postgres for `pytest -m integration`.
 docker compose --profile test up -d db
 ```
 
-The compose file uses `${VAR:?message}` rather than defaults, so a missing
+The compose files use `${VAR:?message}` rather than defaults, so a missing
 variable fails immediately with the variable's name instead of silently
 connecting somewhere unintended.
 
@@ -158,6 +214,16 @@ Not proven, and worth knowing:
 - **NetworkPolicy is not enforced.** minikube's default CNI ignores it — measured,
   not assumed: `agroapp` opens a connection to `postgres:5432` that the
   default-deny should refuse. Use `minikube start --cni=calico` to exercise it.
+
+  This has a live consequence for the frontend cutover, which is why it is worth
+  reading before that work starts. `base/ingress.yaml` declares
+  `default-deny-ingress` and then opens agroapi only to the `ingress-nginx`
+  namespace, so **`agroapp` cannot reach the `agroapi` pod**. Nothing depends on
+  that path yet — `deploy/k8s/base/agroapp.yaml` sets no `AGRO_API_URL`, and only
+  the compose stacks wire the two together. The moment `lib/queries.ts` calls the
+  backend, this layer needs an `allow-agroapp-to-agroapi` policy. Under the
+  default CNI the local overlay will happily pretend otherwise, so the break would
+  surface first in **production**.
 - **PodDisruptionBudgets are computed but not exercised.** `kubectl get pdb`
   shows the right protection (`agroapp` allows 0 disruptions), but a single-node
   drain aborts on an unrelated kube-system pod before reaching them.

@@ -20,6 +20,27 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN --mount=type=cache,target=/pnpm/store \
     pnpm config set store-dir /pnpm/store && pnpm install --frozen-lockfile
 
+# ---------------------------------------------------------------- dev
+# Hot-reload stage for docker-compose.dev.yml. It copies no source: the working
+# tree is bind-mounted over /app, and this stage exists only to carry a
+# Linux-built node_modules that the mount cannot reach (compose shields it with an
+# anonymous volume).
+#
+# No NEXT_PUBLIC_* build args, unlike the builder below. `next dev` reads
+# .env.local from the mounted tree at request time, so inlining them at build time
+# would be both unnecessary and a rebuild every time one changed.
+#
+# It must stay ABOVE the runtime stage: docker build with no --target builds the
+# last stage, and docker-compose.yml relies on that being the production image.
+FROM deps AS dev
+
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
+
+EXPOSE 3000
+CMD ["pnpm", "dev"]
+
 # ---------------------------------------------------------------- build
 FROM node:22-alpine AS builder
 

@@ -32,6 +32,12 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# The template is the opt-in that comment anticipates, and create-next-app's
+# blanket .env* had been quietly swallowing it: agroapp/.env.example existed on
+# disk but was never tracked, so a fresh clone got no frontend env template at
+# all and had to infer the variable names from the code. agroapi/.env.example is
+# committed and this is meant to match it.
+!.env.example
 
 # vercel
 .vercel
