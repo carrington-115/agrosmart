@@ -23,7 +23,12 @@ export default function AnalyticsCard({
           <h2 className="text-3xl font-bold">{value}</h2>
         </div>
         {!sensorView && (
-          <Badge variant="default" className={`${badgeColor}`}>
+          // `text-white` is a deliberate literal, not an oversight. `badgeColor` is
+          // always a saturated fill (green/orange/red/slate), so the text sits on
+          // the same colour in both themes — whereas the variant's default
+          // `text-primary-foreground` inverts to near-black in dark mode and would
+          // put dark text on a mid-green chip.
+          <Badge variant="default" className={`${badgeColor} text-white`}>
             {badgeStatus}
           </Badge>
         )}

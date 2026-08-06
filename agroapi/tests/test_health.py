@@ -11,6 +11,8 @@ from __future__ import annotations
 import httpx
 import pytest
 
+from agroapi.db.pool import SCHEMA_CONTRACT, check_schema, observed_columns
+from agroapi.db.types import DbPool
 from agroapi.main import create_app
 
 
@@ -60,3 +62,47 @@ async def test_openapi_documents_the_contract_rules(client: httpx.AsyncClient) -
     description = response.json()["info"]["description"]
     assert "quality" in description
     assert "NTP" in description
+
+
+@pytest.mark.integration
+async def test_schema_check_sees_the_tables_without_holding_privileges_on_them(
+    pool: DbPool,
+) -> None:
+    """Readiness must describe the schema, not the caller's access to it.
+
+    In production the service connects as `agro_api`, which is `noinherit`, does
+    not own these tables and holds no direct grants — by design, so that a
+    forgotten scope call fails closed rather than serving the wrong tenant. Every
+    other test reaches the tables through `SET ROLE`, which is exactly what the
+    readiness probe does not do, so this privilege state is otherwise unreachable
+    here and unreachable in CI, where the connection is `postgres`.
+
+    The second assertion is the whole reason this test exists: it pins the trap.
+    `information_schema` genuinely cannot see these tables from this role, so a
+    readiness probe built on it would report a fully migrated database as seven
+    missing tables.
+
+    Rolled back rather than cleaned up, so the throwaway role never outlives the
+    test even if the assertions fail. `CREATE ROLE` is transactional in Postgres.
+    """
+    async with pool.acquire() as conn:
+        transaction = conn.transaction()
+        await transaction.start()
+        try:
+            await conn.execute("create role probe_without_privileges noinherit")
+            await conn.execute("set local role probe_without_privileges")
+
+            observed = await observed_columns(conn)
+            through_information_schema = await conn.fetch(
+                """
+                select table_name
+                from information_schema.columns
+                where table_schema = 'public' and table_name = any($1::text[])
+                """,
+                list(SCHEMA_CONTRACT),
+            )
+        finally:
+            await transaction.rollback()
+
+    assert check_schema(observed) == []
+    assert through_information_schema == []

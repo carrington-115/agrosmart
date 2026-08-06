@@ -6,7 +6,8 @@ import {
   MonitoringLineChart,
   Recommendations,
 } from "@/components/web";
-import { analyticsProps } from "@/lib/types";
+import { analyticsProps, ChartPoint } from "@/lib/types";
+import type { Recommendation } from "@/lib/recommendations";
 import { File } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -18,9 +19,15 @@ import { useRouter } from "next/navigation";
 export default function DashboardView({
   hasSensors,
   analytics,
+  recommendations,
+  series,
+  npkEstimated,
 }: {
   hasSensors: boolean;
   analytics: analyticsProps[];
+  recommendations: Recommendation[];
+  series: ChartPoint[];
+  npkEstimated: boolean;
 }) {
   const router = useRouter();
 
@@ -43,8 +50,8 @@ export default function DashboardView({
     <>
       <Analytics items={analytics} />
       <section className="max-w-[100%] overflow-x-auto w-[100%] px-4 mx-auto flex justify-center gap-6 mb-20">
-        <MonitoringLineChart />
-        <Recommendations />
+        <MonitoringLineChart data={series} estimated={npkEstimated} />
+        <Recommendations items={recommendations} />
       </section>
     </>
   );

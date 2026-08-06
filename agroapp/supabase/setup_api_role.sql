@@ -31,7 +31,22 @@
 -- development -- instead of quietly serving the wrong tenant in production.
 -- Fail-closed, in the same spirit as the firmware's typed error enums.
 
-create role agro_api with login password 'CHANGE_ME' noinherit;
+-- Guarded so a re-run resets the password rather than failing on the role
+-- already existing. Plain `create role` aborts the whole script at its first
+-- statement, which on a project that has been half set up leaves the grants
+-- below unapplied while the error names only the role -- and the grants are the
+-- part that actually matters.
+--
+-- Matches the equivalent guards in agroapi/scripts/setup_test_db.sh and
+-- deploy/k8s/overlays/local/0000_auth_stub.sql, which are re-runnable for the
+-- same reason.
+do $$ begin
+  if exists (select 1 from pg_roles where rolname = 'agro_api') then
+    alter role agro_api with login password 'CHANGE_ME' noinherit;
+  else
+    create role agro_api with login password 'CHANGE_ME' noinherit;
+  end if;
+end $$;
 
 grant usage on schema public to agro_api;
 

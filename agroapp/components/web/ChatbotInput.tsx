@@ -188,7 +188,7 @@ export default function ChatInput({
                   <DropdownMenuTrigger asChild>
                     <Button
                       size={"icon-lg"}
-                      className="rounded-full bg-transparent text-black hover:bg-neutral-200/50"
+                      className="rounded-full bg-transparent text-foreground hover:bg-muted"
                     >
                       <Plus />
                     </Button>

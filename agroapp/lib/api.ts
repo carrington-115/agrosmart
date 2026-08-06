@@ -11,13 +11,18 @@
  * the image at build time. Prefixing this one would force an image per
  * environment to communicate a hostname.
  *
- * Today the only consumer is the development probe under `app/dev/backend`. When
- * `lib/queries.ts` moves off Supabase and onto the backend's read API, it calls
- * `apiBaseUrl()` from here rather than reading the environment a second time.
+ * `lib/queries.ts` reads through `apiFetch` below; the development probe under
+ * `app/dev/backend` uses `probeBackend`. Both go through `apiBaseUrl()` rather
+ * than reading the environment a second time.
  */
+
+import { createClient } from "@/lib/supabase/server";
 
 /** How long a probe waits before calling the backend unreachable. */
 const PROBE_TIMEOUT_MS = 5_000;
+
+/** How long a dashboard read waits before giving up on the backend. */
+const REQUEST_TIMEOUT_MS = 10_000;
 
 /**
  * The backend's base URL, without a trailing slash.
@@ -37,6 +42,161 @@ export function apiBaseUrl(): string {
     );
   }
   return url.replace(/\/+$/, "");
+}
+
+/**
+ * A typed failure from agroapi, or from the attempt to reach it.
+ *
+ * `code` is agroapi's own `ErrorCode` when it answered — `SENSOR_NOT_FOUND`,
+ * `NOT_AUTHENTICATED` and so on — and `UNREACHABLE` when nothing did. Callers need
+ * to tell those apart: one is a fact about the data, the other is a fact about the
+ * deployment, and rendering "no sensors" for the second would tell a farmer their
+ * equipment had vanished.
+ */
+export class ApiError extends Error {
+  readonly code: string;
+  readonly status: number | null;
+
+  constructor(code: string, message: string, status: number | null) {
+    super(message);
+    this.name = "ApiError";
+    this.code = code;
+    this.status = status;
+  }
+
+  /** True when the backend could not be reached at all. */
+  get unreachable(): boolean {
+    return this.status === null;
+  }
+}
+
+/**
+ * A read against agroapi, carrying the caller's Supabase session.
+ *
+ * **Server-only.** It reads `AGRO_API_URL`, which is not inlined into the client
+ * bundle, and it forwards an access token that must never be handed to the
+ * browser. Import it from Server Components and route handlers only.
+ *
+ * agroapi verifies the token against Supabase's JWKS and uses its `sub` as the
+ * `auth.uid()` that the RLS policies check, so this is the same identity the
+ * database already understands — no second identity system, and no way for this
+ * app to ask for rows it does not own.
+ *
+ * Only `Authorization` and `Content-Type` are sent, which is exactly what
+ * agroapi's CORS configuration allows. That does not actually matter here — a
+ * server-to-server request sends no `Origin` and triggers no preflight — but
+ * keeping to those two means the same call would work unchanged from a browser.
+ */
+export async function apiFetch<T>(
+  path: string,
+  init: RequestInit & { allowAnonymous?: boolean } = {},
+): Promise<T> {
+  const { allowAnonymous = false, ...rest } = init;
+
+  let baseUrl: string;
+  try {
+    baseUrl = apiBaseUrl();
+  } catch (cause) {
+    throw new ApiError(
+      "NOT_CONFIGURED",
+      cause instanceof Error ? cause.message : String(cause),
+      null,
+    );
+  }
+
+  const headers = new Headers(rest.headers);
+  headers.set("Content-Type", "application/json");
+
+  if (!allowAnonymous) {
+    const supabase = await createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      // Distinguished from a 401 the backend would return: there was no session
+      // to send, so the request is not worth making.
+      throw new ApiError("NOT_AUTHENTICATED", "No active session.", 401);
+    }
+    headers.set("Authorization", `Bearer ${session.access_token}`);
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}${path}`, {
+      ...rest,
+      headers,
+      // A dashboard showing cached telemetry is showing the past while claiming
+      // to show the present. Next caches server fetches aggressively by default.
+      cache: "no-store",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch (cause) {
+    // Connection refused, DNS failure and timeout all land here. `status: null`
+    // is what marks this as "the backend is not there" rather than "the backend
+    // said no".
+    throw new ApiError(
+      "UNREACHABLE",
+      cause instanceof Error ? `${cause.name}: ${cause.message}` : String(cause),
+      null,
+    );
+  }
+
+  if (response.status === 204) return undefined as T;
+
+  const text = await response.text();
+  let body: unknown = null;
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = text;
+    }
+  }
+
+  if (!response.ok) {
+    // agroapi wraps typed errors as {detail: {code, message}}; FastAPI's own
+    // validation errors use {detail: [...]}. Unwrap the former, describe the latter.
+    const detail = (body as { detail?: unknown } | null)?.detail;
+    const typed =
+      detail && typeof detail === "object" && !Array.isArray(detail)
+        ? (detail as { code?: string; message?: string })
+        : null;
+
+    throw new ApiError(
+      typed?.code ?? `HTTP_${response.status}`,
+      typed?.message ?? `${response.status} from ${path}`,
+      response.status,
+    );
+  }
+
+  return body as T;
+}
+
+/** The outcome of a page load: the data, or the reason the backend was unreachable. */
+export type Loaded<T> = { ok: true; data: T } | { ok: false; detail: string };
+
+/**
+ * Runs a page's data fetching and turns "backend unreachable" into a value.
+ *
+ * A helper rather than a `try`/`catch` in each page because the JSX must stay
+ * outside the `try`. React does not render a component at the moment its element
+ * is constructed, so an error thrown during render escapes any enclosing
+ * `try`/`catch` entirely — the block catches nothing and reads as though it does.
+ * (`react-hooks/error-boundaries` flags exactly this.)
+ *
+ * Only a transport failure is converted. A 401 or a 404 is a fact about the
+ * request and should surface as itself rather than as "the backend is down".
+ */
+export async function load<T>(fn: () => Promise<T>): Promise<Loaded<T>> {
+  try {
+    return { ok: true, data: await fn() };
+  } catch (error) {
+    if (error instanceof ApiError && error.unreachable) {
+      return { ok: false, detail: error.message };
+    }
+    throw error;
+  }
 }
 
 /** One HTTP check against the backend. `status` is null when nothing answered. */

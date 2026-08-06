@@ -563,3 +563,112 @@ async def test_successful_use_is_recorded_on_the_token(
             "select last_used_at from public.device_tokens where token_id = $1", token_id
         )
     assert used is not None
+
+
+# ------------------------------------------------------------- device binding
+#
+# The firmware and this service disagree about where the token goes and which path
+# to POST to. `agrosensor/include/config.h:119` aims at `:8080/api/ingest` — the
+# right port, the old Next.js path — and `lib/Net/HttpUplink.h:37` sends the
+# credential as `X-Device-Token` rather than a bearer header. That repository has
+# its own history and hardware CI and cannot be corrected from here, so a node
+# flashed today would get a 404 and then a 401.
+#
+# Both are accommodated on this side. These tests pin that, and they are the ones
+# that will fail loudly if the tolerance is ever removed before `config.h` moves.
+
+
+@pytest.mark.integration
+async def test_the_firmwares_token_header_is_accepted(
+    client: httpx.AsyncClient, pool: DbPool, clean_db: None
+) -> None:
+    """`X-Device-Token`, which is what HttpUplink.cpp actually sends."""
+    token = await mint_for(pool, SENSOR_A)
+
+    response = await client.post(
+        "/v1/ingest", json=fixture("full.json"), headers={"X-Device-Token": token}
+    )
+
+    assert response.status_code == 201
+    assert response.json()["accepted"] == 1
+
+
+@pytest.mark.integration
+async def test_the_firmwares_legacy_path_is_served(
+    client: httpx.AsyncClient, pool: DbPool, clean_db: None
+) -> None:
+    """`/api/ingest`, which is what config.h points AGRO_INGEST_URL at."""
+    token = await mint_for(pool, SENSOR_A)
+
+    response = await client.post(
+        "/api/ingest",
+        json=fixture("full.json"),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 201
+
+
+@pytest.mark.integration
+async def test_the_firmwares_path_and_header_together_bind(
+    client: httpx.AsyncClient, pool: DbPool, clean_db: None
+) -> None:
+    """Exactly what an unmodified node sends today. This is the combination that
+    decides whether hardware works without a reflash."""
+    token = await mint_for(pool, SENSOR_A)
+
+    response = await client.post(
+        "/api/ingest", json=fixture("full.json"), headers={"X-Device-Token": token}
+    )
+
+    assert response.status_code == 201
+    row = await latest_reading(pool)
+    assert row["ph_soil"] == Decimal("6.80")
+
+
+@pytest.mark.integration
+async def test_a_bad_token_in_the_alias_header_is_still_a_uniform_401(
+    client: httpx.AsyncClient, pool: DbPool, clean_db: None
+) -> None:
+    """The alias changes where the bytes come from and nothing else — not the
+    parsing, not the constant-time comparison, not the uniform rejection."""
+    response = await client.post(
+        "/v1/ingest",
+        json=fixture("full.json"),
+        headers={"X-Device-Token": "ags_v1_deadbeef_notasecret"},
+    )
+
+    assert response.status_code == 401
+    assert response.json()["detail"]["code"] == "INVALID_TOKEN"
+
+
+@pytest.mark.integration
+async def test_bearer_wins_when_both_headers_are_present(
+    client: httpx.AsyncClient, pool: DbPool, clean_db: None
+) -> None:
+    """A caller sending two credentials is confused; preferring the documented one
+    keeps the outcome predictable instead of order-dependent."""
+    good = await mint_for(pool, SENSOR_A)
+
+    response = await client.post(
+        "/v1/ingest",
+        json=fixture("full.json"),
+        headers={
+            "Authorization": f"Bearer {good}",
+            "X-Device-Token": "ags_v1_deadbeef_notasecret",
+        },
+    )
+
+    assert response.status_code == 201
+
+
+@pytest.mark.integration
+async def test_the_legacy_path_is_absent_from_the_openapi_document(
+    client: httpx.AsyncClient,
+) -> None:
+    """One documented ingest endpoint, so nobody reads the alias as a second
+    contract worth building against."""
+    paths = (await client.get("/openapi.json")).json()["paths"]
+
+    assert "/v1/ingest" in paths
+    assert "/api/ingest" not in paths

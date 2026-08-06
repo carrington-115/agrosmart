@@ -79,18 +79,83 @@ _WRITE_CONTRACT: dict[str, frozenset[str]] = {
     ),
 }
 
+#: The tables the dashboard read API selects from, beyond those above.
+#:
+#: Kept separate from `_WRITE_CONTRACT` because the two fail for different reasons
+#: and are worth telling apart in a readiness body: a missing write column means a
+#: device cannot deliver telemetry, while a missing read column means the dashboard
+#: cannot render. The realistic failure this catches is 0003 never being pushed,
+#: which would otherwise surface as a 500 the first time someone opens Settings.
+#:
+#: Only the columns actually selected are listed. A full mirror of the schema
+#: would duplicate the migrations and go stale, which is the trap the write
+#: contract's comment already names.
+_READ_CONTRACT: dict[str, frozenset[str]] = {
+    "profiles": frozenset({"id", "name", "email", "phone", "address", "avatar_url"}),
+    "farms": frozenset(
+        {
+            "id",
+            "owner_id",
+            "farm_name",
+            "farm_type",
+            "farm_size",
+            "farm_zones",
+            "country",
+            "state",
+            "city",
+            "address",
+            "created_at",
+        }
+    ),
+    "alerts": frozenset(
+        {
+            "id",
+            "owner_id",
+            "sensor_id",
+            "title",
+            "description",
+            "severity",
+            "label",
+            "state",
+            "created_at",
+        }
+    ),
+    "user_settings": frozenset(
+        {
+            "owner_id",
+            "pair_by_id",
+            "pair_by_qr",
+            "reports_weekly",
+            "reports_monthly",
+            "reports_email",
+            "alerts_dashboard",
+            "alerts_popup",
+            "alerts_email",
+            "alerts_sms",
+            "alerts_delete_ignored_after_days",
+        }
+    ),
+}
+
+#: Everything the service touches. Merged rather than concatenated because
+#: `sensors` appears in both — the writer's columns and the reader's overlap.
+SCHEMA_CONTRACT: dict[str, frozenset[str]] = {
+    table: _WRITE_CONTRACT.get(table, frozenset()) | _READ_CONTRACT.get(table, frozenset())
+    for table in _WRITE_CONTRACT.keys() | _READ_CONTRACT.keys()
+}
+
 
 def check_schema(
     actual: dict[str, set[str]],
     expected: dict[str, frozenset[str]] | None = None,
 ) -> list[SchemaViolation]:
-    """Compare observed columns against the write contract.
+    """Compare observed columns against the schema contract.
 
     Pure and total: takes the query result, returns every violation at once
     rather than raising on the first. Unit-testable against fixtures with no
     database, per the module rule in domain/telemetry.py.
     """
-    expected = expected if expected is not None else _WRITE_CONTRACT
+    expected = expected if expected is not None else SCHEMA_CONTRACT
     violations: list[SchemaViolation] = []
 
     for table, columns in expected.items():
@@ -107,13 +172,46 @@ def check_schema(
 
 
 async def observed_columns(conn: AnyConn) -> dict[str, set[str]]:
+    """Read the columns of the contract tables straight from the system catalog.
+
+    `pg_catalog` and NOT `information_schema.columns`, which is the obvious
+    choice and the wrong one. `information_schema` shows only relations the
+    *current* role holds some privilege on, and the service connects as
+    `agro_api` — `noinherit`, not the owner, holding no direct table grants at
+    all until an explicit SET ROLE (see ../../../agroapp/supabase/setup_api_role.sql).
+    The readiness probe deliberately does not SET ROLE, because it is asking
+    "does this schema exist", not "may this request read it".
+
+    Against `information_schema` that combination returns zero rows, so
+    `check_schema` reports all seven tables as missing and readiness answers 503
+    while pointing at a perfectly migrated database. It reads exactly like an
+    unpushed migration and is not one. CI cannot catch it: CI connects as
+    `postgres`, for whom the two queries agree.
+
+    `pg_catalog` is not privilege-filtered, so what comes back is the schema that
+    is actually there. Whether a role may then read it is RLS's job and
+    `session.py`'s, and it fails loudly on its own.
+    """
     rows = await conn.fetch(
         """
-        select table_name, column_name
-        from information_schema.columns
-        where table_schema = 'public' and table_name = any($1::text[])
+        select c.relname as table_name, a.attname as column_name
+        from pg_catalog.pg_class c
+        join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+        join pg_catalog.pg_attribute a on a.attrelid = c.oid
+        where n.nspname = 'public'
+          -- 'p' as well as 'r': partitioning sensor_readings by month is the
+          -- obvious response to its growth, and this check should not start
+          -- reporting the table missing on the day that happens.
+          and c.relkind in ('r', 'p')
+          -- Excludes the system columns (ctid, xmin, ...) at attnum <= 0, and
+          -- columns dropped by an ALTER, whose entries linger in pg_attribute.
+          and a.attnum > 0
+          and not a.attisdropped
+          and c.relname = any($1::text[])
         """,
-        list(_WRITE_CONTRACT),
+        # Must cover every table `check_schema` will look for, or a missing read
+        # table would be reported as missing simply because it was never queried.
+        list(SCHEMA_CONTRACT),
     )
     result: dict[str, set[str]] = {}
     for row in rows:

@@ -29,28 +29,26 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
-const addSensorButtons = [
-  {
-    icon: <ImagePlus size={64} />,
-    title: "Add sensor by QR Code",
-  },
-  {
-    icon: <Keyboard size={64} />,
-    title: "Add sensor by ID",
-  },
-];
-
 interface DialogWrapperProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   action?: () => void;
 }
 
+/** Which pane of the dialog is showing. */
+type Mode = "choose" | "id" | "qr";
+
 export default function DialogWrapper({
   open,
   onOpenChange,
 }: DialogWrapperProps) {
-  const [openForm, setOpenForm] = useState<boolean>(false);
+  const [mode, setMode] = useState<Mode>("choose");
+  const [pairing, setPairing] = useState<{ url: string; qr: string } | null>(
+    null,
+  );
+  const [pairError, setPairError] = useState<string | null>(null);
+  const [pairLoading, setPairLoading] = useState(false);
+  const openForm = mode === "id";
   type SensorFormValues = z.infer<typeof sensorSchema>;
   const sensorForm = useForm<SensorFormValues>({
     resolver: zodResolver(sensorSchema),
@@ -81,7 +79,7 @@ export default function DialogWrapper({
       toast.success("Sensor connected successfully", {
         description: `${data.sensorId} is now registered.`,
       });
-      setOpenForm(false);
+      setMode("choose");
       onOpenChange(false);
       sensorForm.reset();
       // Refresh so the sensors table and empty-state gate pick up the new row.
@@ -95,14 +93,99 @@ export default function DialogWrapper({
 
   const busy = submitting || pending;
 
+  /**
+   * Requests a pairing link and its QR from the server.
+   *
+   * The QR is rendered server-side, so the token arrives as an image plus a URL
+   * ready to display rather than something the browser has to encode itself.
+   */
+  async function startQrPairing() {
+    setMode("qr");
+    setPairLoading(true);
+    setPairError(null);
+    setPairing(null);
+    try {
+      const response = await fetch("/api/sensors/pair", { method: "POST" });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) {
+        setPairError(body?.error ?? "Could not create a pairing link.");
+        return;
+      }
+      setPairing({ url: body.url, qr: body.qr });
+    } catch {
+      setPairError("Network error. Please try again.");
+    } finally {
+      setPairLoading(false);
+    }
+  }
+
+  // Reset to the chooser whenever the dialog closes, so reopening it does not
+  // show a stale pairing link that may already have expired.
+  function handleOpenChange(next: boolean) {
+    if (!next) {
+      setMode("choose");
+      setPairing(null);
+      setPairError(null);
+    }
+    onOpenChange(next);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add new sensor</DialogTitle>
         </DialogHeader>
 
-        {openForm ? (
+        {mode === "qr" ? (
+          <div className="flex flex-col items-center gap-4 py-4">
+            <DialogDescription className="text-center">
+              Scan this code with your phone. It opens a page where you can scan
+              the QR code on the back of the sensor.
+            </DialogDescription>
+
+            {pairLoading && (
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            )}
+
+            {pairError && (
+              <p className="text-center text-sm text-destructive">{pairError}</p>
+            )}
+
+            {pairing && (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element -- a data:
+                    URI generated per request; next/image would add a loader
+                    round trip for bytes we already hold. */}
+                <img
+                  src={pairing.qr}
+                  alt="QR code linking to the sensor pairing page"
+                  width={240}
+                  height={240}
+                  className="rounded-lg border"
+                />
+                <p className="text-center text-xs text-muted-foreground">
+                  This link works for ten minutes. Anyone who opens it can add a
+                  sensor to your account, so do not share it.
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(pairing.url);
+                    toast.success("Pairing link copied");
+                  }}
+                >
+                  Copy link instead
+                </Button>
+              </>
+            )}
+
+            <Button variant="secondary" onClick={() => setMode("choose")}>
+              Back
+            </Button>
+          </div>
+        ) : openForm ? (
           <div>
             <Form {...sensorForm}>
               <form
@@ -180,33 +263,34 @@ export default function DialogWrapper({
           </div>
         ) : (
           <div className="flex flex-row items-center justify-between gap-6 py-6">
-            {addSensorButtons.map((button) => (
-              <Button
-                key={button.title}
-                variant="ghost"
-                className="flex flex-col items-center gap-4 p-8 h-auto max-w-[220px] w-full rounded-xl bg-primary-container/50 hover:bg-primary-container text-on-primary-container transition-colors"
-                disabled={button.title === "Add sensor by QR Code"}
-                onClick={
-                  button.title === "Add sensor by ID"
-                    ? () => setOpenForm(true)
-                    : undefined
-                }
-              >
-                {button.icon}
-                <span className="text-base font-medium">{button.title}</span>
-              </Button>
-            ))}
+            <Button
+              variant="ghost"
+              className="flex flex-col items-center gap-4 p-8 h-auto max-w-[220px] w-full rounded-xl bg-primary-container/50 hover:bg-primary-container text-on-primary-container transition-colors"
+              onClick={startQrPairing}
+            >
+              <ImagePlus size={64} />
+              <span className="text-base font-medium">
+                Add sensor by QR Code
+              </span>
+            </Button>
+            <Button
+              variant="ghost"
+              className="flex flex-col items-center gap-4 p-8 h-auto max-w-[220px] w-full rounded-xl bg-primary-container/50 hover:bg-primary-container text-on-primary-container transition-colors"
+              onClick={() => setMode("id")}
+            >
+              <Keyboard size={64} />
+              <span className="text-base font-medium">Add sensor by ID</span>
+            </Button>
           </div>
         )}
 
-        {!openForm && (
+        {mode === "choose" && (
           <DialogFooter className="sm:justify-start">
             <div className="flex items-center gap-2 ">
               {<Info size={24} />}
               <DialogDescription className="m-0 text-xs">
-                Public links can be reshared. Share responsibly. Opens in a new
-                window, delete anytime. If sharing with third-parties, their
-                policies apply.
+                Pairing links are valid for ten minutes and let whoever holds
+                them add a sensor to your account. Treat one like a password.
               </DialogDescription>
             </div>
           </DialogFooter>

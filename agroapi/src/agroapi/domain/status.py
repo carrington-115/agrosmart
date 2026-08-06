@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
+from typing import Literal
 
 from agroapi.domain import thresholds
 from agroapi.domain.thresholds import Band
@@ -34,6 +35,17 @@ class Breach:
     metric: str
     value: float
     band: Band
+
+    @property
+    def direction(self) -> Literal["low", "high"]:
+        """Which side of the band the value fell off.
+
+        Derived rather than stored so it cannot disagree with `value` and `band`.
+        Every consumer needs it — the wire DTO to render an arrow, the alert text
+        to choose between "below" and "above" — and each computing it separately
+        is how the three drift apart.
+        """
+        return "low" if self.value < self.band.low else "high"
 
 
 @dataclass(frozen=True, slots=True)

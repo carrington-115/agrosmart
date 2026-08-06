@@ -30,35 +30,42 @@ import {
 import { Bot } from "lucide-react";
 import { MonitoringChartProps } from "@/lib/types";
 
-// Sample data - replace with your real monitoring data
-export const chartData = [
-  { time: "00:00", cpu: 12, memory: 45, network: 320 },
-  { time: "04:00", cpu: 28, memory: 52, network: 480 },
-  { time: "08:00", cpu: 65, memory: 78, network: 1250 },
-  { time: "12:00", cpu: 92, memory: 88, network: 2100 },
-  { time: "16:00", cpu: 78, memory: 82, network: 1850 },
-  { time: "20:00", cpu: 41, memory: 64, network: 980 },
-  { time: "24:00", cpu: 18, memory: 48, network: 410 },
-];
-
+/**
+ * Nitrogen, phosphorus and potassium over time.
+ *
+ * This component used to export a `chartData` fixture of CPU, memory and
+ * network samples and plot it under the title "NPK Realtime Stream" — and
+ * `lib/types.ts` imported that fixture to derive its own props type, so the
+ * type layer depended on a mock in the UI layer. Both are gone: the series
+ * arrives as a prop and `ChartPoint` is declared in `lib/types.ts`.
+ */
 const chartConfig = {
-  cpu: {
-    label: "CPU Usage (%)",
+  nitrogen: {
+    label: "Nitrogen (mg/kg)",
     color: "var(--chart-1)",
   },
-  memory: {
-    label: "Memory Usage (%)",
+  phosphorus: {
+    label: "Phosphorus (mg/kg)",
     color: "var(--chart-2)",
   },
-  network: {
-    label: "Network (Mbps)",
+  potassium: {
+    label: "Potassium (mg/kg)",
     color: "var(--chart-3)",
   },
 } satisfies ChartConfig;
 
 export default function MonitoringLineChart({
-  data = chartData,
+  data = [],
+  estimated = false,
 }: MonitoringChartProps) {
+  const points = data.map((point) => ({
+    ...point,
+    // Axis label only; the tooltip shows the full timestamp.
+    label: new Date(point.time).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  }));
   return (
     <Card className="w-[100%] overflow-x-hidden shadow-none bg-primary-container/20 border border-primary">
       <CardHeader>
@@ -66,13 +73,26 @@ export default function MonitoringLineChart({
           NPK Realtime Stream
         </CardTitle>
         <CardDescription className="text-sm text-on-primary-container/70">
-          This chart style provides excellent at-a-glance insight for farmers,
-          agronomists, or automated fertigation systems — helping detect
-          deficiencies, over-fertilization, or sudden changes due to
-          irrigation/rainfall.
+          Nutrient levels across your sensors over the last 24 hours, so you can
+          spot deficiencies, over-fertilisation, or sudden changes after
+          irrigation or rainfall.
+          {estimated && (
+            // Not a footnote. Every number on this chart is derived from
+            // conductivity rather than measured, and the contract forbids
+            // building fertiliser decisions on them while that is true.
+            <span className="mt-2 block font-medium text-on-primary-container">
+              These values are calculated from soil conductivity, not measured
+              directly. Use them to watch trends, not to decide fertiliser.
+            </span>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {points.length === 0 ? (
+          <p className="py-12 text-center text-sm text-on-primary-container/70">
+            No readings in the last 24 hours.
+          </p>
+        ) : (
         <div className="overflow-x-auto">
           <ChartContainer
             config={chartConfig}
@@ -81,7 +101,7 @@ export default function MonitoringLineChart({
             <ResponsiveContainer width={"99%"} height={"100%"}>
               <LineChart
                 accessibilityLayer
-                data={data}
+                data={points}
                 margin={{
                   left: 12,
                   right: 12,
@@ -96,17 +116,15 @@ export default function MonitoringLineChart({
                 />
 
                 <XAxis
-                  dataKey="time"
+                  dataKey="label"
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
-                  visibility="hidden"
                   tickFormatter={(value) => value}
                 />
 
                 <YAxis
                   tickLine={false}
-                  visibility="hidden"
                   axisLine={false}
                   tickMargin={8}
                   tickCount={5}
@@ -123,40 +141,47 @@ export default function MonitoringLineChart({
                 />
 
                 <ChartLegend content={<ChartLegendContent />} />
+                {/* `connectNulls` is off on purpose: a gap in the line is a gap
+                    in the data, and bridging it would draw a measurement that
+                    was never taken. */}
                 <Line
-                  dataKey="cpu"
+                  dataKey="nitrogen"
                   type="monotone"
-                  stroke="var(--color-cpu)"
+                  stroke="var(--color-nitrogen)"
                   strokeWidth={2.5}
-                  dot={{ r: 4, strokeWidth: 2 }}
-                  activeDot={{ r: 7 }}
+                  dot={{ r: 3, strokeWidth: 2 }}
+                  activeDot={{ r: 6 }}
+                  connectNulls={false}
                 />
 
                 <Line
-                  dataKey="memory"
+                  dataKey="phosphorus"
                   type="monotone"
-                  stroke="var(--color-memory)"
+                  stroke="var(--color-phosphorus)"
                   strokeWidth={2.5}
-                  dot={{ r: 4, strokeWidth: 2 }}
-                  activeDot={{ r: 7 }}
+                  dot={{ r: 3, strokeWidth: 2 }}
+                  activeDot={{ r: 6 }}
+                  connectNulls={false}
                 />
 
                 <Line
-                  dataKey="network"
+                  dataKey="potassium"
                   type="monotone"
-                  stroke="var(--color-network)"
+                  stroke="var(--color-potassium)"
                   strokeWidth={2.5}
-                  dot={{ r: 4, strokeWidth: 2 }}
-                  activeDot={{ r: 7 }}
+                  dot={{ r: 3, strokeWidth: 2 }}
+                  activeDot={{ r: 6 }}
+                  connectNulls={false}
                 />
               </LineChart>
             </ResponsiveContainer>
           </ChartContainer>
         </div>
+        )}
       </CardContent>
       <CardFooter>
         <div className="w-full flex justify-end">
-          <Button className="bg-primary-container text-on-primary-container hover:text-white">
+          <Button className="bg-primary-container text-on-primary-container hover:bg-primary-container/70">
             <Bot size={24} />
             Enhanced readings
           </Button>

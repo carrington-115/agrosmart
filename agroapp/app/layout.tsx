@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { Roboto, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/web";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const roboto = Roboto({
   variable: "--font-roboto",
@@ -26,12 +26,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    // `suppressHydrationWarning` is required, not defensive. next-themes writes the
+    // resolved theme onto <html> in a blocking inline script before React hydrates,
+    // so the server-rendered markup and the client's first read of it genuinely
+    // differ. That mismatch is the mechanism that prevents a flash of the wrong
+    // theme; without this attribute React logs an error for working code.
+    <html lang="en" suppressHydrationWarning>
       <body className={`${roboto.variable} ${robotoMono.variable} antialiased`}>
-        <SidebarProvider>
-          <main className="w-full max-w-full container">{children}</main>
-          <Toaster />
-        </SidebarProvider>
+        <ThemeProvider>
+          <SidebarProvider>
+            <main className="w-full max-w-full container">{children}</main>
+            <Toaster />
+          </SidebarProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

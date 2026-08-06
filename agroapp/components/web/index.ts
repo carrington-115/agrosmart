@@ -21,6 +21,8 @@ import ProfileHeader from "./page-headers/ProfileHeader";
 import UserProfileForm from "./UserProfileInput";
 import SettingsHeader from "./page-headers/SettingsHeader";
 import SettingsCheck from "./SettingsCheckComponent";
+import QualityBadges from "./QualityBadges";
+import BackendUnreachable from "./BackendUnreachable";
 
 export {
   Header,
@@ -44,4 +46,6 @@ export {
   UserProfileForm,
   SettingsHeader,
   SettingsCheck,
+  QualityBadges,
+  BackendUnreachable,
 };

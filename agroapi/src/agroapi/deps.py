@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Annotated
 
-from fastapi import Depends, Request
+from fastapi import Depends, Header, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWTError
 
@@ -86,8 +86,20 @@ async def current_device(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
     conn: Annotated[ServiceConn, Depends(service_conn)],
     config: Annotated[Settings, Depends(get_settings)],
+    x_device_token: Annotated[str | None, Header(alias="X-Device-Token")] = None,
 ) -> devices.DeviceIdentity:
-    """Resolve a per-device bearer token to the sensor it speaks for.
+    """Resolve a per-device token to the sensor it speaks for.
+
+    Accepts the token from `Authorization: Bearer <tok>` or, as an alias, from
+    `X-Device-Token: <tok>`. Bearer is the documented form and what the OpenAPI
+    document advertises; the header alias exists because
+    `agrosensor/lib/Net/HttpUplink.h` sends `X-Device-Token` and the firmware lives
+    in a separate repository with its own hardware CI, so it cannot be corrected
+    from here. A node already in a field binds without a reflash.
+
+    This is tolerance at one edge, not a second scheme: the token format, the
+    lookup, the constant-time comparison and the uniform 401 are all unchanged.
+    Only where the bytes are read from differs.
 
     Every failure — no header, malformed token, unknown `token_id`, revoked,
     expired, wrong secret — raises the SAME 401, so a caller cannot use the
@@ -107,10 +119,19 @@ async def current_device(
     """
     pepper = config.token_pepper.get_secret_value()
 
-    if credentials is None or not credentials.credentials:
+    # Bearer wins when both are present. A caller sending two credentials is
+    # already confused, and preferring the documented one keeps behaviour
+    # predictable rather than order-dependent.
+    raw = (
+        credentials.credentials
+        if credentials is not None and credentials.credentials
+        else (x_device_token or "").strip()
+    )
+
+    if not raw:
         raise invalid_token()
 
-    parsed = device.parse(credentials.credentials)
+    parsed = device.parse(raw)
     if parsed is None:
         # A structurally invalid token is rejected without a lookup, but still
         # pays the HMAC — otherwise "not even a token" is distinguishable from

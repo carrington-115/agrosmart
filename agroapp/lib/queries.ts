@@ -1,19 +1,103 @@
 import { createClient } from "@/lib/supabase/server";
+import { apiFetch, ApiError } from "@/lib/api";
 import type {
-  AlertRow,
-  FarmRow,
-  ProfileRow,
-  SensorReadingRow,
-  SensorRow,
-  SensorWithReading,
-} from "@/lib/database.types";
-import type { alertsCardProps, Sensor } from "@/lib/types";
+  ApiAlert,
+  ApiMe,
+  ApiMetric,
+  ApiPage,
+  ApiReading,
+  ApiSensor,
+  ApiSettings,
+  ApiThresholds,
+} from "@/lib/api-types";
+import type { alertsCardProps, ChartPoint, Quality, Sensor } from "@/lib/types";
 
 /**
- * Server-side data access for the dashboard. Every function relies on RLS for
- * scoping rather than filtering by owner_id in the query, so a missing session
- * yields empty results instead of another user's rows.
+ * Server-side data access for the dashboard.
+ *
+ * Reads go to **agroapi**, not to Supabase. That is the whole point of this
+ * module: the backend owns the thresholds, the status derivation and the alert
+ * logic, so a dashboard that queried Postgres directly had to reimplement all
+ * three in TypeScript and keep them in step by hand.
+ *
+ * Authentication still belongs to Supabase. `apiFetch` forwards the session's
+ * access token, and agroapi uses its `sub` as the `auth.uid()` that the RLS
+ * policies check — so scoping is enforced by the database, once, rather than by
+ * this file remembering to filter.
+ *
+ * Every function keeps the signature it had when this read Supabase directly, so
+ * no page or component changed. The adapters below exist because the wire shape
+ * nests a reading under `latest` while the UI wants it flat; they translate, and
+ * they never invent a value for something the sensor did not report.
  */
+
+/**
+ * `undefined` (key omitted by `exclude_none`) and `null` both mean "not reported".
+ *
+ * There is deliberately no numeric fallback. A `?? 0` here would put a
+ * plausible-looking pH 0.0 in front of a farmer whose water board is unplugged,
+ * which is the failure the whole contract is shaped against.
+ */
+function metric(value: ApiMetric): number | null {
+  return value === undefined || value === null ? null : value;
+}
+
+function toQualityView(quality: ApiReading["quality"]): Quality | null {
+  if (!quality) return null;
+  return {
+    npkEstimated: quality.npkEstimated,
+    stabilising: quality.stabilising,
+    soilDry: quality.soilDry,
+  };
+}
+
+/** Adapts one API sensor to the flat `Sensor` the tables and cards consume. */
+export function toSensorView(sensor: ApiSensor): Sensor {
+  const r = sensor.latest;
+
+  return {
+    sensorId: sensor.sensorId,
+    temperature: metric(r?.temperature),
+    phSoil: metric(r?.phSoil),
+    phWater: metric(r?.phWater),
+    waterTemperature: metric(r?.waterTemperature),
+    waterLevel: metric(r?.waterLevel),
+    sunlight: metric(r?.sunlight),
+    moisture: metric(r?.moisture),
+    salinity: metric(r?.salinity),
+    npk: {
+      nitrogen: metric(r?.npk?.nitrogen),
+      phosphorus: metric(r?.npk?.phosphorus),
+      potassium: metric(r?.npk?.potassium),
+    },
+    quality: toQualityView(r?.quality),
+    recordedAt: r?.recordedAt ?? null,
+    recordedAtSource: r?.recordedAtSource ?? null,
+    lastSeenAt: sensor.lastSeenAt ?? null,
+    rssi: sensor.rssi ?? null,
+    firmwareVersion: sensor.firmwareVersion ?? null,
+    // Derived by the backend from `lastSeenAt` and the thresholds. Not recomputed
+    // here: two derivations of the same fact are two chances to disagree.
+    status: sensor.status,
+    breaches: sensor.breaches ?? [],
+    actions: { id: sensor.id, tag: sensor.tag ?? null },
+  };
+}
+
+export function toAlertView(alert: ApiAlert): alertsCardProps {
+  return {
+    title: alert.title,
+    description: alert.description ?? "",
+    badgeType: alert.severity,
+    badgeInfo: alert.label ?? "Info",
+    alertId: alert.id,
+    state: alert.state,
+    createdAt: alert.createdAt ?? null,
+    sensorId: alert.sensorId ?? null,
+    steps: alert.steps ?? [],
+    derived: alert.derived,
+  };
+}
 
 export async function getCurrentUser() {
   const supabase = await createClient();
@@ -23,147 +107,106 @@ export async function getCurrentUser() {
   return user;
 }
 
-/** numeric columns arrive as numbers, but coerce defensively so the UI never renders NaN. */
-function num(value: number | null): number {
-  return value === null ? 0 : Number(value);
+/**
+ * Every sensor with its latest reading and derived status.
+ *
+ * One request, and one query behind it — agroapi uses a lateral join. The previous
+ * implementation fetched every reading for every sensor and reduced in JavaScript,
+ * which at one reading a minute per node is ~1,440 rows/node/day.
+ */
+export async function getSensors(): Promise<Sensor[]> {
+  const sensors = await apiFetch<ApiSensor[]>("/v1/sensors");
+  return sensors.map(toSensorView);
 }
 
-/** Adapts a joined DB row to the `Sensor` shape the table and cards already consume. */
-export function toSensorView(row: SensorWithReading): Sensor {
-  const r = row.latest;
-  return {
-    sensorId: row.sensor_code,
-    temperature: num(r?.temperature ?? null),
-    ph: num(r?.ph ?? null),
-    sunlight: num(r?.sunlight ?? null),
-    moisture: num(r?.moisture ?? null),
-    salinity: num(r?.salinity ?? null),
-    npk: {
-      nitrogen: num(r?.nitrogen ?? null),
-      phosphorus: num(r?.phosphorus ?? null),
-      potassium: num(r?.potassium ?? null),
-    },
-    status: row.status,
-    actions: { id: row.id, tag: row.sensor_tag },
-  };
+export async function getSensorByCode(sensorCode: string): Promise<Sensor | null> {
+  try {
+    const sensor = await apiFetch<ApiSensor>(
+      `/v1/sensors/${encodeURIComponent(sensorCode)}`,
+    );
+    return toSensorView(sensor);
+  } catch (error) {
+    // A sensor that does not exist, and one belonging to another tenant, are the
+    // same 404 — RLS makes them indistinguishable, which is the correct amount to
+    // leak. Either way the page should render "not found", not an error.
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
 }
 
-export function toAlertView(row: AlertRow): alertsCardProps {
+/** Most recent readings for one sensor, newest first. */
+export async function getRecentReadings(
+  sensorCode: string,
+  limit = 5,
+): Promise<ApiReading[]> {
+  const page = await apiFetch<ApiPage<ApiReading>>(
+    `/v1/sensors/${encodeURIComponent(sensorCode)}/readings?limit=${limit}`,
+  );
+  return page.items;
+}
+
+/** NPK over a window, oldest first, for the dashboard chart. */
+export async function getReadingSeries(
+  sensorCodes: string[],
+  sinceHours = 24,
+): Promise<{ points: ChartPoint[]; estimated: boolean }> {
+  const params = new URLSearchParams({ hours: String(sinceHours) });
+  for (const code of sensorCodes) params.append("sensorIds", code);
+
+  const readings = await apiFetch<ApiReading[]>(`/v1/readings?${params}`);
+
   return {
-    title: row.title,
-    description: row.description ?? "",
-    badgeType: row.severity,
-    badgeInfo: row.label ?? "Info",
-    alertId: row.id,
+    points: readings.map((r) => ({
+      time: r.recordedAt,
+      nitrogen: metric(r.npk?.nitrogen),
+      phosphorus: metric(r.npk?.phosphorus),
+      potassium: metric(r.npk?.potassium),
+    })),
+    // If any contributing reading was back-calculated, the whole series is
+    // labelled estimated. Understating this is the failure that matters.
+    estimated: readings.some((r) => r.quality?.npkEstimated === true),
   };
 }
 
 /**
- * All sensors plus their most recent reading.
+ * Alerts: stored rows plus ones derived from the current readings.
  *
- * Readings are fetched in one batched query and reduced client-side rather than
- * issuing N queries or relying on a database view, so this stays a plain
- * two-round-trip read.
+ * The derivation happens in `agroapi/domain/alerts.py` rather than here. Nothing
+ * inserts an alert row, so without the derived half this page is permanently empty
+ * on a real deployment — but a threshold comparison in a React module cannot use
+ * `thresholds.py` as its source, which is why it moved.
  */
-export async function getSensors(): Promise<SensorWithReading[]> {
-  const supabase = await createClient();
-
-  const { data: sensors, error } = await supabase
-    .from("sensors")
-    .select("*")
-    .order("sensor_code", { ascending: true });
-
-  if (error || !sensors?.length) return [];
-
-  const { data: readings } = await supabase
-    .from("sensor_readings")
-    .select("*")
-    .in(
-      "sensor_id",
-      sensors.map((s) => s.id),
-    )
-    .order("recorded_at", { ascending: false });
-
-  const latestBySensor = new Map<string, SensorReadingRow>();
-  for (const reading of readings ?? []) {
-    // Rows arrive newest-first, so the first hit per sensor is the latest.
-    if (!latestBySensor.has(reading.sensor_id)) {
-      latestBySensor.set(reading.sensor_id, reading);
-    }
-  }
-
-  return (sensors as SensorRow[]).map((s) => ({
-    ...s,
-    latest: latestBySensor.get(s.id) ?? null,
-  }));
+export async function getAlerts(): Promise<alertsCardProps[]> {
+  const alerts = await apiFetch<ApiAlert[]>("/v1/alerts");
+  return alerts.map(toAlertView);
 }
 
-export async function getSensorByCode(
-  sensorCode: string,
-): Promise<SensorWithReading | null> {
-  const supabase = await createClient();
-
-  const { data: sensor } = await supabase
-    .from("sensors")
-    .select("*")
-    .eq("sensor_code", sensorCode)
-    .maybeSingle();
-
-  if (!sensor) return null;
-
-  const { data: latest } = await supabase
-    .from("sensor_readings")
-    .select("*")
-    .eq("sensor_id", sensor.id)
-    .order("recorded_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  return { ...(sensor as SensorRow), latest: (latest as SensorReadingRow) ?? null };
+/** Profile, farm and settings in one round trip. */
+export async function getMe(): Promise<ApiMe> {
+  return apiFetch<ApiMe>("/v1/me");
 }
 
-/** Most recent readings for one sensor, newest first. Powers the "Last N data points" table. */
-export async function getRecentReadings(
-  sensorId: string,
-  limit = 5,
-): Promise<SensorReadingRow[]> {
-  const supabase = await createClient();
-
-  const { data } = await supabase
-    .from("sensor_readings")
-    .select("*")
-    .eq("sensor_id", sensorId)
-    .order("recorded_at", { ascending: false })
-    .limit(limit);
-
-  return (data as SensorReadingRow[]) ?? [];
+export async function getProfile() {
+  return (await getMe()).profile ?? null;
 }
 
-export async function getAlerts(): Promise<AlertRow[]> {
-  const supabase = await createClient();
-
-  const { data } = await supabase
-    .from("alerts")
-    .select("*")
-    .eq("state", "open")
-    .order("created_at", { ascending: false });
-
-  return (data as AlertRow[]) ?? [];
+export async function getFarm() {
+  return (await getMe()).farm ?? null;
 }
 
-export async function getProfile(): Promise<ProfileRow | null> {
-  const supabase = await createClient();
-  const { data } = await supabase.from("profiles").select("*").maybeSingle();
-  return (data as ProfileRow) ?? null;
+export async function getUserSettings(): Promise<ApiSettings> {
+  return (await getMe()).settings;
 }
 
-export async function getFarm(): Promise<FarmRow | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("farms")
-    .select("*")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  return (data as FarmRow) ?? null;
+/**
+ * The safe bands.
+ *
+ * Fetched, never declared. This is what lets `agroapi/domain/thresholds.py` be the
+ * only place the numbers are written down — the frontend needs them to label a
+ * reading "Low" or "Optimal", and any local copy would drift.
+ *
+ * Unauthenticated on the backend, so this works before a session is established.
+ */
+export async function getThresholds(): Promise<ApiThresholds> {
+  return apiFetch<ApiThresholds>("/v1/thresholds", { allowAnonymous: true });
 }
