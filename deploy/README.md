@@ -68,13 +68,19 @@ that reads its backend's location, not one image per place it might be.
 cp .env.example .env
 docker compose up --build
 
-# Throwaway Postgres for `pytest -m integration`.
-docker compose --profile test up -d db
+# Throwaway Postgres for `pytest -m integration`. Needs no configuration at all.
+docker compose -f docker-compose.test.yml up -d db
 ```
 
-The compose files use `${VAR:?message}` rather than defaults, so a missing
-variable fails immediately with the variable's name instead of silently
-connecting somewhere unintended.
+`docker-compose.yml` and `docker-compose.dev.yml` use `${VAR:?message}` rather
+than defaults, so a missing variable fails immediately with the variable's name
+instead of silently connecting somewhere unintended.
+
+The test database is a third file rather than a profile in the first one for that
+same reason: Compose interpolates a whole file before selecting services, so those
+guards fired even when only `db` was requested, and the integration suite could not
+be started on a clean checkout without inventing credentials for services it does
+not use.
 
 ## Kubernetes
 

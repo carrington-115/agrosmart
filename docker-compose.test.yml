@@ -1,0 +1,48 @@
+# Throwaway Postgres for `pytest -m integration`.
+#
+#   docker compose -f docker-compose.test.yml up -d db
+#   bash agroapi/scripts/setup_test_db.sh
+#
+# Its own file rather than a profile in docker-compose.yml, and the reason is not
+# tidiness. Compose interpolates the *whole* file before it selects which services
+# to start, so the `${VAR:?message}` guards on agroapi and agroapp fired even for
+# `--profile test up -d db`, which needs none of those variables:
+#
+#   required variable NEXT_PUBLIC_SUPABASE_URL is missing a value
+#
+# The integration suite was therefore unreachable on a clean checkout unless the
+# contributor first invented Supabase credentials to satisfy services they were not
+# starting. That is the exact audience the tmpfs and the psql-in-container fallback
+# in setup_test_db.sh were written for.
+#
+# Keeping the guards and moving the database is the right way round. Dropping them
+# would let `docker compose up` build an agroapp image with an empty Supabase URL —
+# an image that looks deployable and fails in front of a user, which is the failure
+# publish-images.yml already goes out of its way to avoid.
+#
+# Separate project name, so `docker compose down` on the production stack cannot
+# take the test database with it and vice versa. setup_test_db.sh derives the
+# container name from it; override with AGRO_TEST_DB_CONTAINER if you rename this.
+
+name: agrosmart-test
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: agrosmart_test
+    ports:
+      # 55432, not 5432, so this cannot collide with a Postgres already installed
+      # on the host. CI publishes its service container on 5432 and overrides
+      # PGPORT accordingly.
+      - "55432:5432"
+    # tmpfs, not a volume: this database is meant to be thrown away, and never
+    # persisting it removes the temptation to treat it as a source of truth.
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agrosmart_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
