@@ -66,6 +66,14 @@ export default function Login() {
         password,
         options: {
           data: {
+            // `handle_new_user()` in 0001_init.sql reads
+            // `raw_user_meta_data->>'name'`, falling back to `'full_name'`.
+            // This sent only `display_name`, which matches neither, so the
+            // trigger's coalesce fell through and every new profile was created
+            // with a NULL name. Both keys are written so the profile name lands
+            // whichever the trigger looks at.
+            name,
+            full_name: name,
             display_name: name,
           },
         },

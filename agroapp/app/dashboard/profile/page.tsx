@@ -1,12 +1,11 @@
 import { ProfileHeader, UserProfileForm } from "@/components/web";
-import { getCurrentUser, getFarm, getProfile } from "@/lib/queries";
+import { getCurrentUser, getMe } from "@/lib/queries";
 
 export default async function Profile() {
-  const [user, profile, farm] = await Promise.all([
-    getCurrentUser(),
-    getProfile(),
-    getFarm(),
-  ]);
+  // One request for profile and farm, rather than two: `GET /v1/me` returns both,
+  // and this page needs both before it can render either.
+  const [user, me] = await Promise.all([getCurrentUser(), getMe()]);
+  const { profile, farm } = me;
 
   return (
     <div className="flex flex-col items-center gap-5 mb-12">
@@ -25,10 +24,10 @@ export default async function Profile() {
           city: farm?.city ?? "",
           address: farm?.address ?? "",
           state: farm?.state ?? "",
-          farmSize: farm?.farm_size ?? 0,
-          farmZones: farm?.farm_zones ?? 0,
-          farmType: farm?.farm_type ?? "",
-          farmName: farm?.farm_name ?? "",
+          farmSize: farm?.farmSize ?? 0,
+          farmZones: farm?.farmZones ?? 0,
+          farmType: farm?.farmType ?? "",
+          farmName: farm?.farmName ?? "",
         }}
       />
     </div>

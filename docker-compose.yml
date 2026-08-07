@@ -1,10 +1,14 @@
 # Local development and integration testing.
 #
-#   docker compose up                      dashboard + backend against Supabase
-#   docker compose --profile test up -d db  a throwaway Postgres for pytest
+#   docker compose up   dashboard + backend against Supabase
 #
 # Production runs from deploy/k8s/. This file exists so a contributor can bring
 # the whole stack up without installing Python, pnpm and a database first.
+#
+# The throwaway Postgres for `pytest -m integration` lives in
+# docker-compose.test.yml. It was a `profiles: [test]` service here until the
+# required-variable guards below made it unstartable without credentials it has no
+# use for — see that file's header.
 
 name: agrosmart
 
@@ -49,28 +53,13 @@ services:
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:?set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
     ports:
       - "3000:3000"
+    environment:
+      # Runtime, not a build arg — the address differs per environment and the
+      # image must not. Read by Server Components through lib/api.ts. Without it
+      # the depends_on below is ordering and nothing more: the dashboard would
+      # wait for a backend it has no way to call.
+      AGRO_API_URL: http://agroapi:8080
     depends_on:
       agroapi:
         condition: service_healthy
     restart: unless-stopped
-
-  # Integration-test database. Behind a profile so `up` does not start it: the
-  # real schema lives in Supabase, and this exists only so `pytest -m integration`
-  # can run against something disposable.
-  db:
-    profiles: [test]
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: agrosmart_test
-    ports:
-      - "55432:5432"
-    # tmpfs, not a volume: this database is meant to be thrown away, and never
-    # persisting it removes the temptation to treat it as a source of truth.
-    tmpfs:
-      - /var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d agrosmart_test"]
-      interval: 5s
-      timeout: 3s
-      retries: 10

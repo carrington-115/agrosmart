@@ -49,14 +49,21 @@ ever — no RLS policy can protect a table from a key that ships to every browse
 
 | Component | State |
 |---|---|
-| `agroapp` dashboard | Working. Reads real data. Chatbot, ML and recommendations are not implemented. |
-| `agroapi` backend | Foundations: config, wire schema, envelope mapping, status derivation, RLS scoping, device tokens, health. **Ingest and read routers not yet wired.** |
-| Database | `0001` base schema, `0002` telemetry contract. RLS on every table. |
-| `../agrosensor` firmware | Phases A–E complete, 109 host tests. **Phase F (network delivery) blocked** until `/v1/ingest` exists. |
+| `agroapp` dashboard | Reads and writes through `agroapi` over HTTP. Light and dark themes. Chatbot and ML are not implemented; recommendations are rule-based rather than generated. |
+| `agroapi` backend | Ingest, the dashboard read API, sensor and alert management, device-token minting, health. 153 tests. |
+| Database | `0001` base schema, `0002` telemetry contract, `0003` user settings. RLS on every table. |
+| `../agrosensor` firmware | Phases A–F complete, 109 host tests. Publishing over HTTP. |
 
-The firmware currently builds a complete telemetry document every 60 seconds and
-logs it to serial, because there is nothing to POST it to. Unblocking that is the
-backend's reason for existing.
+The two services no longer merely share a database. Every dashboard read is an
+HTTP call to `agroapi`, authenticated with the browser's own Supabase JWT, and the
+thresholds, status derivation and alert logic live there once rather than in both.
+
+**A device flashed today binds without a reflash.** `agrosensor/include/config.h`
+points at `:8080/api/ingest` and sends its credential as `X-Device-Token`, while
+the documented address is `/v1/ingest` with a bearer token. Rather than requiring
+a firmware change in a separate repository, `agroapi` accepts both — see
+`deps.py:current_device` and the alias in `main.py`. The firmware should still move
+to the documented form; it is no longer urgent.
 
 ## Quick start
 

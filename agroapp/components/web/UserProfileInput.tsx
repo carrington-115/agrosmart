@@ -128,7 +128,7 @@ export default function UserProfileInput({
                           type="email"
                           placeholder="email@example.com"
                           aria-invalid={fieldState.invalid}
-                          className="bg-white"
+                          className="bg-background"
                           disabled
                           {...field}
                         />
@@ -150,7 +150,7 @@ export default function UserProfileInput({
                           type="text"
                           placeholder="Name"
                           aria-invalid={fieldState.invalid}
-                          className="bg-white"
+                          className="bg-background"
                           {...field}
                         />
                       </FormControl>
@@ -172,7 +172,7 @@ export default function UserProfileInput({
                           type="text"
                           placeholder="Address"
                           aria-invalid={fieldState.invalid}
-                          className="bg-white"
+                          className="bg-background"
                           {...field}
                         />
                       </FormControl>
@@ -193,7 +193,7 @@ export default function UserProfileInput({
                           type="tel"
                           placeholder="Phone number"
                           aria-invalid={fieldState.invalid}
-                          className="bg-white"
+                          className="bg-background"
                           {...field}
                         />
                       </FormControl>
@@ -269,7 +269,7 @@ export default function UserProfileInput({
                           placeholder="Country"
                           aria-invalid={fieldState.invalid}
                           {...field}
-                          className="bg-white"
+                          className="bg-background"
                         />
                       </FormControl>
                     </FormItem>
@@ -293,7 +293,7 @@ export default function UserProfileInput({
                           placeholder="City"
                           aria-invalid={fieldState.invalid}
                           {...field}
-                          className="bg-white"
+                          className="bg-background"
                         />
                       </FormControl>
                     </FormItem>
@@ -319,7 +319,7 @@ export default function UserProfileInput({
                           placeholder="Address"
                           aria-invalid={fieldState.invalid}
                           {...field}
-                          className="bg-white"
+                          className="bg-background"
                         />
                       </FormControl>
                     </FormItem>
@@ -343,7 +343,7 @@ export default function UserProfileInput({
                           placeholder="State"
                           aria-invalid={fieldState.invalid}
                           {...field}
-                          className="bg-white"
+                          className="bg-background"
                         />
                       </FormControl>
                     </FormItem>
@@ -369,7 +369,7 @@ export default function UserProfileInput({
                           placeholder="Farm Size"
                           aria-invalid={fieldState.invalid}
                           {...field}
-                          className="bg-white"
+                          className="bg-background"
                         />
                       </FormControl>
                     </FormItem>
@@ -393,7 +393,7 @@ export default function UserProfileInput({
                           placeholder="Farm Zones"
                           aria-invalid={fieldState.invalid}
                           {...field}
-                          className="bg-white"
+                          className="bg-background"
                         />
                       </FormControl>
                     </FormItem>
@@ -419,7 +419,7 @@ export default function UserProfileInput({
                           placeholder="Farm Type"
                           aria-invalid={fieldState.invalid}
                           {...field}
-                          className="bg-white"
+                          className="bg-background"
                         />
                       </FormControl>
                     </FormItem>
@@ -442,7 +442,7 @@ export default function UserProfileInput({
                           type="text"
                           placeholder="Farm Name"
                           aria-invalid={fieldState.invalid}
-                          className="bg-white"
+                          className="bg-background"
                           {...field}
                         />
                       </FormControl>

@@ -53,10 +53,11 @@ plausible-looking acid reading that nothing downstream could distinguish from a
 real one. `Optional[float]` all the way through; `exclude_none=True` on the way
 out.
 
-> Known violation, do not copy it: `num()` in `agroapp/lib/queries.ts` coerces
-> `null → 0`. It is also the only thing stopping the unguarded `temp.toFixed(1)`
-> in `lib/table-columns.tsx` from throwing. Both are scheduled for the frontend
-> cutover.
+> The frontend cutover removed the long-standing violation here: `num()` in
+> `agroapp/lib/queries.ts` used to coerce `null → 0`, and it was the only thing
+> stopping the unguarded `temp.toFixed(1)` in `lib/table-columns.tsx` from
+> throwing. Both are now `null`-preserving and render an em dash for absent.
+> A `?? 0` anywhere in the read path is a regression, not a convenience.
 
 **2. The `quality` block is load-bearing and always present.**
 
@@ -138,6 +139,14 @@ tests, then implementation.**
 - Pure tests need no database. Anything that does is marked `@integration`.
 - Cross-tenant isolation is asserted **per endpoint**, not once. It is the whole
   justification for the RLS approach.
+- **The integration suite is destructive and only ever runs against loopback.** Its
+  fixtures truncate `sensor_readings`, `device_tokens`, `alerts` and `user_settings`.
+  `tests/conftest.py` deliberately loads `agroapi/.env`, so the moment that file
+  holds the Supabase DSN — which is exactly what running the backend against the
+  real project requires — `uv run pytest` would point every truncate at production.
+  `_refuse_remote_db` fails the run on any non-loopback host. Do not weaken it, and
+  do not reach for `AGRO_ALLOW_REMOTE_TEST_DB=1` unless the target really is
+  disposable.
 
 The frontend has no test framework yet. Do not add one as a side effect of an
 unrelated change.
@@ -203,19 +212,30 @@ Configured in `.mcp.json`:
 
 ## Known state, so you do not rediscover it
 
-- Nothing **creates** alerts. The UI accepts and rejects them; `seed.sql`
-  provides fixtures; no code inserts one.
-- `getSensors()` loads *every* reading for *every* sensor and reduces in JS. At
-  1 reading/min/node that is 1,440 rows/node/day and degrades within days.
-- `components/web/LineChart.tsx` still renders `{cpu, memory, network}`
-  placeholder data labelled "CPU Usage (%)", and `lib/types.ts` imports that
-  mock into the type layer while the component imports types back out — a
-  circular dependency that must break before any real chart.
-- Thresholds are duplicated between `deriveStatus()` in `app/api/ingest/route.ts`
-  and `lib/analytics.tsx`. `agroapi/domain/thresholds.py` is the intended single
-  source.
-- `sunlight` is labelled "lux" in the table. The LDR is uncalibrated and
-  relative — it is not lux.
-- `app/auth/page.tsx` writes `display_name` to user metadata, but
-  `handle_new_user()` reads `name`/`full_name`, so new profile names are `NULL`.
-- Google sign-in and password reset are non-functional buttons.
+Still true:
+
+- Google sign-in and password reset are non-functional buttons in
+  `app/auth/page.tsx`.
+- The frontend has no test framework. The logic that used to justify one moved to
+  `agroapi/domain/`, where 153 tests cover it.
+
+Resolved by the frontend cutover — recorded so they are not "fixed" a second time,
+in the wrong direction:
+
+- **Alerts are derived, not inserted.** Nothing ever created an `alerts` row, so
+  the page was permanently empty on a real deployment. `agroapi/domain/alerts.py`
+  now derives them from the latest reading and the bands, which means they also
+  **clear themselves** when the reading returns to range. Derived alerts carry
+  string ids and cannot be accepted or resolved — they have no row. Stored alerts
+  still work; `GET /v1/alerts` returns both. Do not add an inserting writer
+  without deciding what clears it.
+- `getSensors()` no longer reduces in JS. `db/repositories/queries.py` uses
+  `left join lateral … order by recorded_at desc limit 1`, one row per sensor.
+- `LineChart.tsx` plots real readings; the `{cpu, memory, network}` placeholder and
+  the `lib/types.ts` ↔ component circular import are gone.
+- Thresholds live only in `agroapi/domain/thresholds.py`. `app/api/ingest/route.ts`
+  was deleted and `lib/analytics.tsx` reads them over HTTP. Never re-type a
+  threshold in TypeScript.
+- `sunlight` is no longer labelled "lux" anywhere — it is uncalibrated and relative.
+- `app/auth/page.tsx` now sends `full_name` *and* `display_name`, so
+  `handle_new_user()` finds a name.

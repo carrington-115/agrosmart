@@ -92,8 +92,24 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
+
+  /*
+   * AgroSmart's orange, held slightly back for a dark surface.
+   *
+   * This was `oklch(0.922 0 0)` — a near-white carried over from the shadcn
+   * default palette. It is a sane neutral for a generic template and wrong here:
+   * `--primary` is the brand, and it paints the active sidebar item, every primary
+   * button and the "Generate report" call to action. In dark mode the product
+   * simply stopped being orange.
+   *
+   * Darkened from the light `#f09f2a` rather than reused verbatim, because the
+   * full-strength orange against `oklch(0.145)` is bright enough to bloom. The
+   * foreground pairs dark, which is what an orange this saturated needs.
+   */
+  --primary: #d98a1f;
   --primary-foreground: oklch(0.205 0 0);
+
+  /* The container pair inverts: dark surface, light text on it. */
   --on-primary-container: #fdf5ea;
   --primary-container: #302008;
   --secondary: oklch(0.269 0 0);
@@ -121,15 +137,24 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/*
+ * A scrim over whatever is behind a dialog. Fine in both themes — it darkens,
+ * rather than asserting a colour of its own.
+ */
 [data-radix-portal] [data-radix-overlay] {
   background: rgba(0, 0, 0, 0.4) !important;
 }
-[data-radix-portal] [data-radix-dialog-content] {
-  background: white !important;
-  z-index: 999999 !important;
-  transform: none !important; /* disable animations for test */
-  opacity: 1 !important;
-}
+
+/*
+ * There used to be a rule here forcing `background: white !important` on every
+ * Radix dialog, together with `transform: none` and `opacity: 1` commented
+ * "disable animations for test". It was debugging scaffolding that shipped, and it
+ * would have made every dialog — Add sensor, the QR pane — a blinding white panel
+ * with dark-theme text on it, unreadable.
+ *
+ * The dialog now takes `bg-popover` from the component, which is a token and
+ * therefore already correct in both themes. Nothing needs to replace this.
+ */
 
 @layer base {
   * {

@@ -41,7 +41,18 @@ export async function updateSession(request: NextRequest) {
 
   const user = data?.claims;
 
-  if (!user && !request.nextUrl.pathname.startsWith("/auth")) {
+  // Paths that must work without a session.
+  //
+  // `/pair/<token>` is opened on a phone that scanned the dashboard's QR code.
+  // It has no cookie and cannot get one — its authority is the signed pairing
+  // token in the URL, which the page verifies itself. Redirecting it to /auth
+  // would ask the farmer to log in on their phone to complete a flow they
+  // already authorised on their computer.
+  const publicPath =
+    request.nextUrl.pathname.startsWith("/auth") ||
+    request.nextUrl.pathname.startsWith("/pair");
+
+  if (!user && !publicPath) {
     // no user, redirect to the auth page (sign in / sign up live at /auth)
     const url = request.nextUrl.clone();
     url.pathname = "/auth";

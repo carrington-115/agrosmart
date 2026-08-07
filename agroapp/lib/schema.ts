@@ -64,19 +64,35 @@ export const sensorSchema = z.object({
   sensorTag: z.string().trim().min(3).max(16),
 });
 
-export const ingestReadingSchema = z.object({
-  sensorId: z.string().trim().min(1),
-  recordedAt: z.iso.datetime().optional(),
-  temperature: z.number().min(-50).max(100).optional(),
-  ph: z.number().min(0).max(14).optional(),
-  sunlight: z.number().min(0).optional(),
-  moisture: z.number().min(0).max(100).optional(),
-  salinity: z.number().min(0).optional(),
-  nitrogen: z.number().min(0).optional(),
-  phosphorus: z.number().min(0).optional(),
-  potassium: z.number().min(0).optional(),
-});
+/*
+ * The device telemetry envelope used to be mirrored here, for the Next.js ingest
+ * route that has since been retired. agroapi owns ingest now — with per-device
+ * tokens rather than one shared key — so a second copy of the wire contract in a
+ * second language was two things to keep in step for no benefit. The authoritative
+ * mirror is `agroapi/src/agroapi/schemas/ingest.py`.
+ */
 
 export const alertStateSchema = z.object({
   state: z.enum(["open", "accepted", "rejected"]),
 });
+
+/**
+ * Settings PUT body. Every field optional so the client can send only what
+ * changed, but `.strict()` so a typo'd key is rejected rather than silently
+ * ignored — a preference that appears to save and does not is worse than an error.
+ */
+export const userSettingsSchema = z
+  .object({
+    pair_by_id: z.boolean(),
+    pair_by_qr: z.boolean(),
+    reports_weekly: z.boolean(),
+    reports_monthly: z.boolean(),
+    reports_email: z.boolean(),
+    alerts_dashboard: z.boolean(),
+    alerts_popup: z.boolean(),
+    alerts_email: z.boolean(),
+    alerts_sms: z.boolean(),
+    alerts_delete_ignored_after_days: z.number().int().min(0).max(365),
+  })
+  .partial()
+  .strict();

@@ -30,6 +30,7 @@ import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import ThemeToggle from "./ThemeToggle";
 
 // Menu items.
 
@@ -111,7 +112,7 @@ export default function AppSidebar() {
                     className={twMerge(
                       "hover:!bg-on-primary-container/5 hover:!text-on-primary-container",
                       (item.url === pathname || item.optUrl === pathname) &&
-                        "!bg-primary !text-primary-foreground hover:!bg-primary hover:!text-white",
+                        "!bg-primary !text-primary-foreground hover:!bg-primary hover:!text-primary-foreground",
                     )}
                   >
                     <Link href={item.url}>
@@ -143,7 +144,7 @@ export default function AppSidebar() {
                     className={twMerge(
                       "hover:!bg-on-primary-container/5 hover:!text-on-primary-container",
                       item.url === pathname &&
-                        "!bg-primary !text-primary-foreground hover:!bg-primary hover:!text-white",
+                        "!bg-primary !text-primary-foreground hover:!bg-primary hover:!text-primary-foreground",
                     )}
                   >
                     <Link href={item.url}>
@@ -164,6 +165,9 @@ export default function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {/* Beside Profile and Settings, because it is a preference rather
+                  than a destination. */}
+              <ThemeToggle collapsed={!sidebarOpen} />
             </SidebarMenu>
           </SidebarGroupContent>
           <div className={twMerge(sidebarOpen && "w-full flex justify-end")}>

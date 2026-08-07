@@ -15,6 +15,8 @@ import {
 import { MoreHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Sensor } from "./types";
+import { fmt, fmtRelative, fmtUnit } from "./format";
+import QualityBadges from "@/components/web/QualityBadges";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -69,10 +71,14 @@ export const columns: ColumnDef<Sensor>[] = [
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => {
-      const temp = row.getValue("temperature") as number;
-      return <div className="text-center">{temp.toFixed(1)} °C</div>;
-    },
+    // Guarded. This used to be a bare `temp.toFixed(1)`, which only survived
+    // because queries.ts coerced every null to 0 on the way in. With absence
+    // preserved, an unguarded call here throws on the first unplugged board.
+    cell: ({ row }) => (
+      <div className="text-center">
+        {fmtUnit(row.original.temperature, " °C", 1)}
+      </div>
+    ),
   },
 
   {
@@ -87,21 +93,33 @@ export const columns: ColumnDef<Sensor>[] = [
       </Button>
     ),
     cell: ({ row }) => (
-      <div className="text-center">{row.getValue("moisture")}%</div>
+      <div className="text-center">{fmtUnit(row.original.moisture, "%", 0)}</div>
     ),
   },
 
+  // Two pH columns, not one. The soil probe (range 3–9, ±0.3) and the calibrated
+  // water board measure different things in different media; a single column
+  // could only show one of them while implying it covered both.
   {
-    accessorKey: "ph",
-    header: "pH",
-    cell: ({ row }) => <div className="text-center">{row.getValue("ph")}</div>,
+    accessorKey: "phSoil",
+    header: "pH (soil)",
+    cell: ({ row }) => (
+      <div className="text-center">{fmt(row.original.phSoil, 1)}</div>
+    ),
+  },
+  {
+    accessorKey: "phWater",
+    header: "pH (water)",
+    cell: ({ row }) => (
+      <div className="text-center">{fmt(row.original.phWater, 1)}</div>
+    ),
   },
 
   {
     accessorKey: "salinity",
     header: "Salinity (dS/m)",
     cell: ({ row }) => (
-      <div className="text-center">{row.getValue("salinity")}</div>
+      <div className="text-center">{fmt(row.original.salinity, 2)}</div>
     ),
   },
 
@@ -112,17 +130,41 @@ export const columns: ColumnDef<Sensor>[] = [
       const npk = row.original.npk;
       return (
         <div className="text-sm text-center whitespace-nowrap">
-          N: {npk.nitrogen} | P: {npk.phosphorus} | K: {npk.potassium}
+          N: {fmt(npk.nitrogen, 0)} | P: {fmt(npk.phosphorus, 0)} | K:{" "}
+          {fmt(npk.potassium, 0)}
         </div>
       );
     },
   },
 
   {
+    // Not "lux". The LDR is uncalibrated and relative; labelling its output with
+    // a photometric unit asserts a calibration that does not exist.
     accessorKey: "sunlight",
-    header: "Sunlight (lux)",
+    header: "Sunlight (rel.)",
     cell: ({ row }) => (
-      <div className="text-center">{row.getValue("sunlight")}</div>
+      <div className="text-center">{fmt(row.original.sunlight, 0)}</div>
+    ),
+  },
+  {
+    accessorKey: "waterLevel",
+    header: "Water level",
+    cell: ({ row }) => (
+      <div className="text-center">{fmt(row.original.waterLevel, 0)}</div>
+    ),
+  },
+  {
+    id: "quality",
+    header: "Quality",
+    cell: ({ row }) => <QualityBadges quality={row.original.quality} />,
+  },
+  {
+    accessorKey: "lastSeenAt",
+    header: "Last seen",
+    cell: ({ row }) => (
+      <div className="text-center whitespace-nowrap text-sm text-muted-foreground">
+        {fmtRelative(row.original.lastSeenAt)}
+      </div>
     ),
   },
   {

@@ -1,70 +1,34 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { getSensors, toSensorView } from "@/lib/queries";
-import { sensorSchema } from "@/lib/schema";
+import { apiFetch } from "@/lib/api";
+import { getSensors } from "@/lib/queries";
+import { forwardError, readJson } from "@/lib/forward";
+import type { ApiSensor } from "@/lib/api-types";
+
+/**
+ * List and register sensors.
+ *
+ * A forwarder now: agroapi owns the write, including the uniqueness conflict and
+ * the farm attachment that used to be a second query here. Authentication is not
+ * checked twice — `apiFetch` throws `NOT_AUTHENTICATED` when there is no session,
+ * and agroapi rejects a bad token itself.
+ */
 
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  try {
+    return NextResponse.json({ sensors: await getSensors() });
+  } catch (error) {
+    return forwardError(error);
   }
-
-  const sensors = (await getSensors()).map(toSensorView);
-  return NextResponse.json({ sensors });
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  try {
+    const sensor = await apiFetch<ApiSensor>("/v1/sensors", {
+      method: "POST",
+      body: JSON.stringify(await readJson(request)),
+    });
+    return NextResponse.json({ sensor }, { status: 201 });
+  } catch (error) {
+    return forwardError(error);
   }
-
-  const parsed = sensorSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid sensor payload", issues: parsed.error.issues },
-      { status: 422 },
-    );
-  }
-
-  // Attach to the user's first farm when one exists; farm_id is nullable.
-  const { data: farm } = await supabase
-    .from("farms")
-    .select("id")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  const { data, error } = await supabase
-    .from("sensors")
-    .insert({
-      owner_id: user.id,
-      farm_id: farm?.id ?? null,
-      sensor_code: parsed.data.sensorId,
-      sensor_tag: parsed.data.sensorTag,
-      status: "offline",
-    })
-    .select("*")
-    .single();
-
-  if (error) {
-    // 23505 = unique_violation on (owner_id, sensor_code)
-    if (error.code === "23505") {
-      return NextResponse.json(
-        { error: "A sensor with that ID is already registered." },
-        { status: 409 },
-      );
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ sensor: data }, { status: 201 });
 }

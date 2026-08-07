@@ -3,7 +3,7 @@
 #
 # Bring the throwaway integration database up to the current schema.
 #
-#   docker compose --profile test up -d db
+#   docker compose -f docker-compose.test.yml up -d db
 #   bash agroapi/scripts/setup_test_db.sh
 #
 # The migrations live in the frontend workspace because the Supabase CLI is the
@@ -37,8 +37,8 @@ PGPASSWORD="${PGPASSWORD:-postgres}"
 export PGPASSWORD
 
 # Compose names it <project>-<service>-<index>; the project is pinned to
-# `agrosmart` at the top of docker-compose.yml.
-DB_CONTAINER="${AGRO_TEST_DB_CONTAINER:-agrosmart-db-1}"
+# `agrosmart-test` at the top of docker-compose.test.yml.
+DB_CONTAINER="${AGRO_TEST_DB_CONTAINER:-agrosmart-test-db-1}"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MIGRATIONS="$HERE/../../agroapp/supabase/migrations"
@@ -53,7 +53,7 @@ if command -v psql >/dev/null 2>&1; then
 else
   if ! docker inspect "$DB_CONTAINER" >/dev/null 2>&1; then
     echo "error: no local psql and no container named '$DB_CONTAINER'." >&2
-    echo "       Start it with: docker compose --profile test up -d db" >&2
+    echo "       Start it with: docker compose -f docker-compose.test.yml up -d db" >&2
     echo "       Or set AGRO_TEST_DB_CONTAINER to the right name." >&2
     exit 1
   fi
@@ -157,6 +157,17 @@ psql_run <<'SQL'
 grant usage on schema public to authenticated, service_role;
 grant all on all tables in schema public to authenticated, service_role;
 grant all on all sequences in schema public to authenticated, service_role;
+
+-- USAGE on `auth` as well, because Supabase grants it and the dashboard's write
+-- statements call auth.uid() directly to fill owner_id.
+--
+-- Subtle, and worth spelling out: RLS *policies* can call auth.uid() without this
+-- grant, because a policy expression is evaluated internally rather than as the
+-- calling role. So the read endpoints pass while every INSERT that names
+-- auth.uid() fails with "permission denied for schema auth" — the exact drift
+-- this file's header warns about, where a green suite is testing a fiction.
+grant usage on schema auth to authenticated, service_role;
+grant execute on function auth.uid() to authenticated, service_role;
 SQL
 
 echo

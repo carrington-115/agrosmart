@@ -1,55 +1,140 @@
-"use client";
-
 import { DetailedReport } from "@/components/web";
+import { getSensors } from "@/lib/queries";
+import { buildRecommendations } from "@/lib/recommendations";
 import { detailedReportProps } from "@/lib/types";
+import { fmt } from "@/lib/format";
 import { twMerge } from "tailwind-merge";
 
-const detailedReportSuggestions: detailedReportProps[] = [
-  {
-    title: "Weekly Soil Nutrient Summary (Jan 8–14, 2026)",
-    description:
-      "Comprehensive analysis of NPK levels, pH, organic carbon, and EC from your IoT sensors across 3 fields. Nitrogen remains low at 88–94 mg/kg, while Phosphorus and Potassium are in optimal range. Includes trend graphs and comparison with last month's readings.",
-    exportFunction: () => {},
-    AISummary: () => {},
-  },
-  {
-    title: "Maize Crop Health & Pest Risk Report",
-    description:
-      "Detailed assessment based on leaf camera images and environmental data. Detected early nitrogen deficiency symptoms and low risk of fall armyworm (score: 18/100). Recommends foliar application of 19:19:19 + neem oil within 5 days to prevent spread.",
-    exportFunction: () => {},
-    AISummary: () => {},
-  },
-  {
-    title: "Irrigation & Water Usage Report (Last 30 Days)",
-    description:
-      "Shows total water applied: 420 mm, efficiency: 71%, savings: ~38,000 liters/ha compared to flood irrigation. Critical dry spell detected Jan 10–14. Recommends scheduling next drip cycle for tomorrow morning (18–22 mm).",
-    exportFunction: () => {},
-    AISummary: () => {},
-  },
-  {
-    title: "Projected Yield & Market Outlook – Wheat (Rabi 2025-26)",
-    description:
-      "Current projection: 4.9–5.3 tons/ha (based on NPK trends, weather forecast, and growth stage). Mandi prices in Lucknow expected to rise 8–12% by mid-February. Recommendation: Delay sale by 10–15 days if storage available.",
-    exportFunction: () => {},
-    AISummary: () => {},
-  },
-  {
-    title: "Sustainability & Carbon Footprint Report",
-    description:
-      "This season's estimated carbon sequestration: 1.7 t/ha. Water use efficiency improved 22% YoY. Organic practices adopted on 40% of land. Total carbon credits potential: ~₹12,500/ha if certified. Includes comparison with conventional farming benchmarks.",
-    exportFunction: () => {},
-    AISummary: () => {},
-  },
-];
+const NO_MODEL =
+  "AI summaries need a language model, and none is connected to this deployment yet.";
 
-export default function Detailed() {
+/**
+ * Reports built from data this system actually holds.
+ *
+ * The five reports here were previously hardcoded prose citing mandi prices,
+ * carbon credits, leaf-camera imagery, pest risk scores and irrigation volumes —
+ * none of which any part of AgroSmart measures or receives. They read as real
+ * output, which is the problem: a farmer would have acted on a projected wheat
+ * price this system invented.
+ *
+ * `agroapp/README.md` states the position these follow: agronomic and economic
+ * KPIs "need external data sources that are not connected, so they are omitted
+ * rather than mocked". What remains is derived from readings, and each report
+ * says what it is counted from.
+ */
+export default async function Detailed() {
+  const sensors = await getSensors();
+
+  if (!sensors.length) {
+    return (
+      <div className="w-full max-w-full px-4 mt-5">
+        <p className="text-sm text-muted-foreground">
+          Reports appear once you have added a sensor and it has reported.
+        </p>
+      </div>
+    );
+  }
+
+  const reporting = sensors.filter((s) => s.recordedAt !== null);
+  const offline = sensors.filter((s) => s.status === "offline");
+  const warning = sensors.filter((s) => s.status === "warning");
+  const estimated = sensors.some((s) => s.quality?.npkEstimated);
+  const dry = sensors.filter((s) => s.quality?.soilDry);
+  const settling = sensors.filter((s) => s.quality?.stabilising);
+
+  const present = (values: (number | null)[]) =>
+    values.filter((v): v is number => v !== null);
+
+  const mean = (values: (number | null)[]) => {
+    const p = present(values);
+    return p.length ? p.reduce((a, b) => a + b, 0) / p.length : null;
+  };
+
+  const recommendations = buildRecommendations(sensors);
+
+  const reports: detailedReportProps[] = [
+    {
+      title: "Latest reading per sensor",
+      description: `A row for each of your ${sensors.length} sensor${
+        sensors.length === 1 ? "" : "s"
+      }, with every metric it reported, both pH readings, water level, and the quality flags that say whether its nutrient values were measured or estimated. Exports as CSV.`,
+      exportHref: "/api/reports/summary",
+      aiUnavailableReason: NO_MODEL,
+    },
+    {
+      title: "Soil nutrient summary",
+      description: estimated
+        ? `Nitrogen averages ${fmt(mean(sensors.map((s) => s.npk.nitrogen)), 0)} mg/kg, phosphorus ${fmt(
+            mean(sensors.map((s) => s.npk.phosphorus)),
+            0,
+          )} mg/kg and potassium ${fmt(
+            mean(sensors.map((s) => s.npk.potassium)),
+            0,
+          )} mg/kg across ${reporting.length} reporting sensor${
+            reporting.length === 1 ? "" : "s"
+          }. These are calculated from soil conductivity rather than measured, so they are shown without a verdict and no fertiliser recommendation is made from them.`
+        : `Nitrogen averages ${fmt(mean(sensors.map((s) => s.npk.nitrogen)), 0)} mg/kg, phosphorus ${fmt(
+            mean(sensors.map((s) => s.npk.phosphorus)),
+            0,
+          )} mg/kg and potassium ${fmt(
+            mean(sensors.map((s) => s.npk.potassium)),
+            0,
+          )} mg/kg across ${reporting.length} reporting sensor${
+            reporting.length === 1 ? "" : "s"
+          }, measured directly.`,
+      exportHref: "/api/reports/summary",
+      aiUnavailableReason: NO_MODEL,
+    },
+    {
+      title: "Soil condition summary",
+      description: `Soil pH averages ${fmt(mean(sensors.map((s) => s.phSoil)), 1)}, moisture ${fmt(
+        mean(sensors.map((s) => s.moisture)),
+        0,
+      )}%, and temperature ${fmt(mean(sensors.map((s) => s.temperature)), 1)}°C. ${
+        dry.length
+          ? `${dry.length} sensor${dry.length === 1 ? " reports" : "s report"} dry soil, which zeroes its conductivity-derived nutrient values — expected, not a fault.`
+          : "No sensor is reporting dry soil."
+      }`,
+      exportHref: "/api/reports/summary",
+      aiUnavailableReason: NO_MODEL,
+    },
+    {
+      title: "Sensor health and coverage",
+      description: `${sensors.length - offline.length} of ${sensors.length} sensor${
+        sensors.length === 1 ? "" : "s"
+      } reported within the last few minutes. ${
+        offline.length
+          ? `${offline.length} ${offline.length === 1 ? "has" : "have"} stopped reporting and ${offline.length === 1 ? "its readings are" : "their readings are"} no longer current. `
+          : ""
+      }${warning.length ? `${warning.length} ${warning.length === 1 ? "is" : "are"} outside a threshold. ` : ""}${
+        settling.length
+          ? `${settling.length} ${settling.length === 1 ? "is" : "are"} still settling after insertion, so ${settling.length === 1 ? "it is" : "they are"} not being judged against thresholds yet.`
+          : ""
+      }`,
+      exportHref: "/api/reports/summary",
+      aiUnavailableReason: NO_MODEL,
+    },
+    {
+      title: "Current recommendations",
+      description: `${recommendations.length} recommendation${
+        recommendations.length === 1 ? "" : "s"
+      } from the present readings, in plain language, each naming the sensors it applies to. Derived from thresholds rather than a model, so it covers what follows from the numbers and nothing beyond them.`,
+      aiUnavailableReason: NO_MODEL,
+    },
+  ];
+
   return (
     <div className="w-full max-w-full">
       <div className={twMerge("flex flex-col px-4 gap-4 mt-5")}>
-        {detailedReportSuggestions.map((report) => (
+        {reports.map((report) => (
           <DetailedReport key={report.title} {...report} />
         ))}
       </div>
+      <p className="px-4 mt-6 text-xs text-muted-foreground">
+        Yield projections, market prices and carbon figures are not shown: they
+        need data sources this system is not connected to, and estimating them
+        from soil readings alone would be guesswork presented as a report.
+      </p>
     </div>
   );
 }

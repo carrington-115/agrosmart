@@ -32,9 +32,17 @@ _REQUIRED = {
 
 
 def build(monkeypatch: pytest.MonkeyPatch, **overrides: str) -> Settings:
+    """Construct Settings from the environment alone.
+
+    `_env_file=None` disables the `.env` named in `model_config`. These tests are
+    about how a value parses, so the developer's own `.env` must not participate:
+    an explicit `setenv` outranks the file and would pass either way, but a test
+    that *deletes* a variable to assert a default would read the file's value
+    instead and quietly assert nothing.
+    """
     for key, value in {**_REQUIRED, **overrides}.items():
         monkeypatch.setenv(key, value)
-    return Settings()  # type: ignore[call-arg]
+    return Settings(_env_file=None)  # type: ignore[call-arg]
 
 
 def test_a_single_origin_is_accepted_as_a_plain_string(
@@ -74,9 +82,16 @@ def test_a_missing_required_variable_fails_at_construction(
 
     This is the behaviour the Next.js ingest route got wrong — it returned 503
     forever because two environment variables were absent and nothing said so.
+
+    `_env_file=None` is load-bearing. `model_config` names `env_file=".env"`, and
+    deleting the variables from the environment does not stop pydantic-settings
+    reading that file — so without this the test asserts "nothing is configured"
+    while a developer who followed the README's `cp .env.example .env` has it
+    configured on disk. It passed only on machines that had not set the project
+    up yet, which is the worst possible condition for a test to be sensitive to.
     """
     for key in _REQUIRED:
         monkeypatch.delenv(key, raising=False)
 
     with pytest.raises(Exception, match=r"token_pepper|database_url|supabase_url"):
-        Settings()  # type: ignore[call-arg]
+        Settings(_env_file=None)  # type: ignore[call-arg]

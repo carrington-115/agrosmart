@@ -1,0 +1,93 @@
+# Development stack. Both services, hot reload, and the dashboard pointed at the
+# backend over HTTP.
+#
+#   cp .env.example .env && $EDITOR .env
+#   docker compose -f docker-compose.dev.yml up --build
+#
+#   http://localhost:3000/dev/backend        the connection, rendered
+#   curl -s localhost:3000/api/dev/backend   the same probe, no session needed
+#
+# This is the file that makes agroapp ↔ agroapi a real connection rather than a
+# shared database. AGRO_API_URL below is the whole of the wiring; everything else
+# here is reload plumbing.
+#
+# Separate from docker-compose.yml rather than an override of it. Compose merges
+# overrides additively and cannot *remove* the base file's NEXT_PUBLIC_* build
+# args, which dev has no use for — `next dev` reads agroapp/.env.local at runtime.
+#
+# Not a substitute for `docker compose up`, which builds the production images and
+# is what CI and deploy/ mirror. This one proves behaviour, that one proves the
+# artefact.
+
+name: agrosmart-dev
+
+services:
+  agroapi:
+    build:
+      context: ./agroapi
+    # The production image is reused as-is — no dev stage needed. uvicorn[standard]
+    # is a runtime dependency, so watchfiles is already installed, and the image
+    # sets PYTHONDONTWRITEBYTECODE=1, so the read-only source mount below never
+    # gets a .pyc written into it.
+    command:
+      - uvicorn
+      - agroapi.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --reload
+      - --reload-dir
+      - /app/src
+    volumes:
+      # Read-only: reloading needs to watch this tree, never to write to it.
+      - ./agroapi/src:/app/src:ro
+    ports:
+      - "8080:8080"
+    environment:
+      # As in docker-compose.yml, `${VAR:?}` rather than a default: a missing
+      # value fails immediately with the variable's name instead of silently
+      # connecting somewhere unintended.
+      AGRO_DATABASE_URL: ${AGRO_DATABASE_URL:?set AGRO_DATABASE_URL}
+      AGRO_SUPABASE_URL: ${AGRO_SUPABASE_URL:?set AGRO_SUPABASE_URL}
+      AGRO_TOKEN_PEPPER: ${AGRO_TOKEN_PEPPER:?generate with openssl rand -hex 32}
+      # Only browser calls need this. The probe runs in the Next.js server, which
+      # sends no Origin header — so a CORS mistake here cannot make it fail, and
+      # fixing CORS cannot make it pass.
+      AGRO_CORS_ORIGINS: http://localhost:3000
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import urllib.request,sys
+          sys.exit(0 if urllib.request.urlopen("http://127.0.0.1:8080/v1/health",timeout=2).status==200 else 1)
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  agroapp:
+    build:
+      context: ./agroapp
+      target: dev
+    volumes:
+      - ./agroapp:/app
+      # Both anonymous volumes are load-bearing. Without them the bind mount above
+      # buries the image's Linux-built node_modules under the host's — built on
+      # Windows, with native binaries this container cannot execute — and hands
+      # `next dev` a .next directory produced by a different Next invocation.
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3000:3000"
+    environment:
+      # The connection. `agroapi` resolves on the compose network; from a host dev
+      # server the same variable is http://localhost:8080. That it differs per
+      # environment is exactly why it is runtime configuration and not a
+      # NEXT_PUBLIC_ build arg — see agroapp/Dockerfile and agroapp/lib/api.ts.
+      AGRO_API_URL: http://agroapi:8080
+    depends_on:
+      agroapi:
+        condition: service_healthy
